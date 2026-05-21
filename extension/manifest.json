@@ -1,18 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Janu DNS Overlay",
-  "version": "1.2",
-  "description": "Integrated Private Internet Command Center.",
+  "version": "2.0",
+  "description": "JanuNet — private domain overlay network for students.",
   "permissions": [
-    "storage", 
+    "storage",
     "declarativeNetRequest",
     "sidePanel",
     "tabs"
   ],
-"host_permissions": [
-    "*://*.firebase.google.com/*",
-    "https://*.firestore.googleapis.com/*",
-    "https://api.groq.com/*" 
+  "host_permissions": [
+    "https://firestore.googleapis.com/*",
+    "https://api.groq.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -26,6 +25,9 @@
   },
   "side_panel": {
     "default_path": "panel.html"
+  },
+  "omnibox": {
+    "keyword": "j"
   },
   "action": {
     "default_title": "JanuNet Command Center"

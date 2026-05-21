@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Welcome to JanuNet</title>
+<style>
+  :root {
+    --bg: #0a0a0a; --surface: #121212; --surface2: #1a1a1a;
+    --border: #262626; --border-strong: #3a3a3a;
+    --text: #ededed; --text2: #9a9a9a; --text3: #5e5e5e;
+    --accent: #00ffcc; --accent-dim: rgba(0,255,204,0.08);
+    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 40px 20px;
+  }
+  .card {
+    width: 100%; max-width: 560px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    padding: 48px 40px;
+  }
+  .step { display: none; }
+  .step.active { display: block; }
+
+  /* progress dots */
+  .dots {
+    display: flex; gap: 8px; justify-content: center;
+    margin-bottom: 40px;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border-strong);
+    transition: background 300ms, transform 300ms;
+  }
+  .dot.active { background: var(--accent); transform: scale(1.3); }
+  .dot.done   { background: var(--text3); }
+
+  .step-number {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--accent); letter-spacing: 2px;
+    text-transform: uppercase; margin-bottom: 12px;
+  }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 12px; letter-spacing: -0.5px; }
+  p  { font-size: 14px; color: var(--text2); line-height: 1.7; margin-bottom: 24px; }
+
+  .feature-list {
+    list-style: none; margin-bottom: 32px;
+  }
+  .feature-list li {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px; color: var(--text2);
+  }
+  .feature-list li:last-child { border: none; }
+  .feature-list li span:first-child { font-size: 18px; flex-shrink: 0; }
+
+  .code-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-family: var(--font-mono);
+    font-size: 13px; color: var(--accent);
+    margin-bottom: 24px;
+    line-height: 1.8;
+  }
+  .code-block .dim { color: var(--text3); }
+
+  .btn {
+    width: 100%; padding: 14px;
+    background: var(--accent); color: #000;
+    border: none; border-radius: 8px;
+    font-weight: 700; font-size: 14px;
+    cursor: pointer; letter-spacing: 0.3px;
+    transition: background 120ms;
+    font-family: var(--font-sans);
+  }
+  .btn:hover { background: #4cffd9; }
+  .btn-outline {
+    background: transparent; color: var(--text2);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover { border-color: var(--border-strong); color: var(--text); }
+
+  .btn-row { display: flex; gap: 10px; }
+  .btn-row .btn { flex: 1; }
+
+  .portal-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .portal-icon { font-size: 32px; }
+  .portal-info h3 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .portal-info p  { font-size: 12px; color: var(--text3); margin: 0; }
+  .portal-url {
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--accent); text-decoration: none;
+  }
+  .portal-url:hover { text-decoration: underline; }
+
+  .check { color: var(--accent); font-size: 20px; }
+  .center { text-align: center; }
+  .big-check { font-size: 64px; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="card">
+
+  <div class="dots">
+    <div class="dot active" id="dot-0"></div>
+    <div class="dot" id="dot-1"></div>
+    <div class="dot" id="dot-2"></div>
+  </div>
+
+  <!-- Step 1 — What is JanuNet -->
+  <div class="step active" id="step-0">
+    <div class="step-number">Step 1 of 3</div>
+    <h1>Welcome to JanuNet.</h1>
+    <p>Your private domain overlay network. Register custom domains and access them instantly from any browser with this extension.</p>
+    <ul class="feature-list">
+      <li><span>🚀</span><span>Register custom <b>.student</b> and <b>.januos</b> domains in seconds</span></li>
+      <li><span>🤖</span><span>Every domain is scanned by Groq AI before going live</span></li>
+      <li><span>📊</span><span>Track visits to your domains in real-time</span></li>
+      <li><span>🔗</span><span>Share your domains with a QR code — works for everyone</span></li>
+    </ul>
+    <button class="btn" onclick="nextStep()">Get Started →</button>
+  </div>
+
+  <!-- Step 2 — How to use -->
+  <div class="step" id="step-1">
+    <div class="step-number">Step 2 of 3</div>
+    <h1>How to use JanuNet.</h1>
+    <p>There are two ways to access any JanuNet domain:</p>
+
+    <div class="code-block">
+      <div class="dim"># Method 1 — Sidepanel</div>
+      Click the JanuNet icon → type domain → GO<br><br>
+      <div class="dim"># Method 2 — Address bar (omnibox)</div>
+      Type <span style="color:var(--text)">j</span> + Tab → then your domain
+    </div>
+
+    <p>To register your own domain, use the JanuNet portal:</p>
+    <div class="portal-card">
+      <div class="portal-icon">🌐</div>
+      <div class="portal-info">
+        <h3>JanuNet Portal</h3>
+        <a class="portal-url" href="https://gen-z-dns.vercel.app" target="_blank">gen-z-dns.vercel.app</a>
+        <p>Register domains, manage routes, view analytics</p>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="prevStep()">← Back</button>
+      <button class="btn" onclick="nextStep()">Next →</button>
+    </div>
+  </div>
+
+  <!-- Step 3 — Done -->
+  <div class="step" id="step-2">
+    <div class="center">
+      <div class="big-check">🌐</div>
+      <div class="step-number" style="justify-content:center;display:flex;">You're all set</div>
+      <h1 style="margin-bottom:12px;">JanuNet is ready.</h1>
+      <p>Click the JanuNet icon in your toolbar to open the sidepanel and start exploring. Build your private internet.</p>
+    </div>
+    <button class="btn" onclick="finish()">Open JanuNet →</button>
+  </div>
+
+</div>
+<script src="onboarding.js"></script>
+</body>
+</html>
