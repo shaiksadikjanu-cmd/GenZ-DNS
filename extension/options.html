@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>JanuNet Admin Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f7f6; margin: 0; padding: 40px; }
+    .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    h1 { color: #333; border-bottom: 2px solid #00ffcc; padding-bottom: 10px; }
+    .form-group { margin-bottom: 15px; }
+    input { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
+    button { background: #000; color: #00ffcc; padding: 10px 20px; border: none; font-weight: bold; cursor: pointer; border-radius: 5px; text-transform: uppercase; }
+    button:hover { background: #333; }
+    .domain-list { margin-top: 30px; }
+    .domain-item { background: #eee; padding: 10px; margin-bottom: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
+    .delete-btn { background: #ff4d4d; color: white; padding: 5px 10px; font-size: 12px; }
+    .delete-btn:hover { background: #cc0000; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>🌐 JanuNet Admin Control</h1>
+    
+    <div class="form-group">
+      <label><b>Register New Subdomain:</b></label>
+      <input type="text" id="new-domain" placeholder="e.g., janu.project">
+    </div>
+    
+    <div class="form-group">
+      <label><b>Target Web Address:</b></label>
+      <input type="text" id="target-url" placeholder="e.g., https://github.com/shaikjanu">
+    </div>
+    
+    <button id="save-btn">Register Domain</button>
+
+    <div class="domain-list">
+      <h3>Your Active Network:</h3>
+      <div id="list-container"></div>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
