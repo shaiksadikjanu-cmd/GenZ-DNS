@@ -25,3 +25,15 @@ function finish() {
   chrome.storage.local.set({ onboardingDone: true });
   window.close();
 }
+
+// Wire buttons here — NOT in HTML onclick attrs (blocked by MV3 CSP)
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.getAttribute('data-action');
+      if (action === 'next')   nextStep();
+      if (action === 'prev')   prevStep();
+      if (action === 'finish') finish();
+    });
+  });
+});
