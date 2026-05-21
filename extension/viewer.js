@@ -2,7 +2,7 @@
 // Handles: topbar display, nav (back/fwd/refresh), visit counter, share modal, QR generation
 
 const PROJECT_ID = "janunet-cloud";
-const PUBLIC_BASE = "https://gen-z-dns.vercel.app/domain"; // public URL base — Phase 3 wires this for real
+const PUBLIC_BASE = "https://gen-z-dns.vercel.app/domains"; // public URL base — Phase 3 wires this for real
 
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);

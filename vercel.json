@@ -1,8 +1,13 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/domain/:user/:domain", "destination": "/api/domain" },
-    { "source": "/domain/:domain",       "destination": "/api/domain" },
-    { "source": "/api/(.*)",             "destination": "/api/$1" }
+    {
+      "source": "/domains/:user/:domain",
+      "destination": "/api/domain?user=:user&domain=:domain"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    }
   ]
 }
