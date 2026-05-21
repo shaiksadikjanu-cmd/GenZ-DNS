@@ -1,6 +1,8 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
+    { "source": "/domain/:user/:domain", "destination": "/api/domain" },
+    { "source": "/domain/:domain",       "destination": "/api/domain" },
+    { "source": "/api/(.*)",             "destination": "/api/$1" }
   ]
 }
