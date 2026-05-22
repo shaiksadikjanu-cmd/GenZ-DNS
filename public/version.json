@@ -1,7 +1,7 @@
 {
-  "latest": "2.2",
+  "latest": "2.0",
   "minimum": "2.0",
   "downloadUrl": "/GenZ-DNS-Extension.zip",
-  "releaseNotes": "Added dark mode and fixed sidepanel bug",
+  "releaseNotes": "Initial public release of JanuNet extension.",
   "releasedAt": "2026-05-22"
 }
