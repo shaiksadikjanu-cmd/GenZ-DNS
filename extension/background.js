@@ -79,7 +79,7 @@ function isOutdated(installed, latest) {
 function showUpdateNotification(current, latest) {
   chrome.notifications.create('janunet-update', {
     type: 'basic',
-    iconUrl: chrome.runtime.getURL('rules.json'), // placeholder until you add a 128x128 icon
+    iconUrl: chrome.runtime.getURL('icons/icon-128.png'), // placeholder until you add a 128x128 icon
     title: '🔄 JanuNet update available',
     message: `Version ${latest} is out (you have ${current}). Click to update.`,
     priority: 2

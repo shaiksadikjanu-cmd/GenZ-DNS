@@ -1,7 +1,7 @@
 {
-  "latest": "2.0",
+  "latest": "2.1",
   "minimum": "2.0",
   "downloadUrl": "/GenZ-DNS-Extension.zip",
-  "releaseNotes": "Initial public release of JanuNet extension. Includes sidepanel with recents, favorites, autocomplete, omnibox support, browser-style viewer, and onboarding.",
+  "releaseNotes": "Added proper JanuNet icon. Chrome notification now shows correctly when updates are available.",
   "releasedAt": "2026-05-22"
 }
