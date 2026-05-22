@@ -142,8 +142,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile }
     from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, deleteDoc }
-    from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+  import { getStorage } from "/lib/storage/index.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyD1KSbWmhpVObAe3NxvC-KX0Mp7QKs3ARc",
@@ -154,9 +153,12 @@
     appId: "1:60613644839:web:5587c36e2203896b52f402"
   };
 
-  const app  = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db   = getFirestore(app);
+  const app     = initializeApp(firebaseConfig);
+  const auth    = getAuth(app);
+  // Adapter is auth-aware: portal supplies a token-getter so writes work.
+  const storage = getStorage({
+    getAuthToken: async () => auth.currentUser ? await auth.currentUser.getIdToken() : null
+  });
 
   // ── UI refs ──
   const landingSec  = document.getElementById('landing-section');
@@ -219,7 +221,7 @@
       const cred = await createUserWithEmailAndPassword(auth, email, pass);
       await updateProfile(cred.user, { displayName: name });
       // Store public profile in Firestore (no password!)
-      await setDoc(doc(db, 'janu_users', cred.user.uid), { username: name, email });
+      await storage.createUser(cred.user.uid, { username: name, email });
       err.innerText = '';
     } catch(e) {
       err.innerText = e.message;
@@ -286,22 +288,24 @@
     err.style.color = 'var(--text-dim)';
     err.innerText   = 'Security passed. Deploying to cloud...';
 
-    const domainRef = doc(db, 'janu_domains', domainName);
-    const snap      = await getDoc(domainRef);
-    if (snap.exists()) {
+    try {
+      const existing = await storage.getDomain(domainName);
+      if (existing) {
+        err.style.color = 'var(--danger)';
+        return err.innerText = 'Domain is already taken globally!';
+      }
+      await storage.createDomain({
+        name:       domainName,
+        targetUrl:  url,
+        ownerEmail: user.email,
+        ownerName:  user.displayName || user.email,
+        ownerUid:   user.uid,
+        createdAt:  Date.now()
+      });
+    } catch(e) {
       err.style.color = 'var(--danger)';
-      return err.innerText = 'Domain is already taken globally!';
+      return err.innerText = 'Failed to register: ' + e.message;
     }
-
-    // ── Write to Firestore (now stores uid + username for public URL) ──
-    await setDoc(domainRef, {
-      targetUrl:   url,
-      ownerEmail:  user.email,
-      ownerName:   user.displayName || user.email,
-      ownerUid:    user.uid,
-      visits:      0,
-      createdAt:   Date.now()
-    });
 
     document.getElementById('new-domain').value = '';
     document.getElementById('target-url').value  = '';
@@ -312,7 +316,7 @@
   // ── Delete domain ──
   window.deleteDomain = async function(domainName) {
     if (confirm(`Delete ${domainName}? This will break active links.`)) {
-      await deleteDoc(doc(db, 'janu_domains', domainName));
+      await storage.deleteDomain(domainName);
       loadUserDomains(auth.currentUser);
     }
   };
@@ -321,23 +325,21 @@
   async function loadUserDomains(user) {
     const container = document.getElementById('domain-list');
     container.innerHTML = '<p style="color:var(--text-dim)">Fetching live routes...</p>';
-    const q    = query(collection(db, 'janu_domains'), where('ownerEmail', '==', user.email));
-    const snap = await getDocs(q);
+    const domains = await storage.listDomainsByOwner(user.email);
     container.innerHTML = '';
-    if (snap.empty) {
+    if (domains.length === 0) {
       container.innerHTML = `<div style="text-align:center;padding:40px;background:var(--bg);border:1px dashed var(--border);border-radius:8px;"><p style="color:var(--text-dim);margin:0;">No active routes. Deploy your first domain above!</p></div>`;
       return;
     }
-    snap.forEach(d => {
-      const data = d.data();
+    domains.forEach(d => {
       const card = document.createElement('div');
       card.className = 'domain-card';
       card.innerHTML = `
         <div>
-          <div class="domain-name">${d.id}<span class="badge">👁️ ${data.visits || 0} views</span></div>
-          <div class="target-url">↳ ${data.targetUrl}</div>
+          <div class="domain-name">${d.name}<span class="badge">👁️ ${d.visits || 0} views</span></div>
+          <div class="target-url">↳ ${d.targetUrl}</div>
         </div>
-        <button class="btn-danger" style="padding:8px 16px;" onclick="deleteDomain('${d.id}')">Delete</button>
+        <button class="btn-danger" style="padding:8px 16px;" onclick="deleteDomain('${d.name}')">Delete</button>
       `;
       container.appendChild(card);
     });

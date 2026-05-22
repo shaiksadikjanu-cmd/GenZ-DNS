@@ -1,31 +1,52 @@
 // FirestoreAdapter — uses Firestore REST API.
 // Works in both Vercel serverless (Node) and the browser (no SDK needed).
+//
+// For authenticated writes (from the browser portal), pass a getAuthToken()
+// function via the config — it should return a fresh Firebase ID token.
+// Server-side usage (Vercel APIs) can skip it; reads work without auth.
 
 import { StorageAdapter } from './StorageAdapter.js';
 
 const DEFAULT_PROJECT_ID = 'janunet-cloud';
 
 export class FirestoreAdapter extends StorageAdapter {
-  constructor({ projectId = DEFAULT_PROJECT_ID } = {}) {
+  constructor({ projectId = DEFAULT_PROJECT_ID, getAuthToken = null } = {}) {
     super();
-    this.projectId = projectId;
+    this.projectId    = projectId;
+    this.getAuthToken = getAuthToken; // async function returning a token, or null
     this.base = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
   }
 
   get backendName() { return 'firestore'; }
 
+  // ── Internal: build headers, with auth if available ──
+  async _headers(extra = {}) {
+    const h = { 'Content-Type': 'application/json', ...extra };
+    if (this.getAuthToken) {
+      try {
+        const tok = await this.getAuthToken();
+        if (tok) h['Authorization'] = 'Bearer ' + tok;
+      } catch (e) { /* token unavailable — proceed without */ }
+    }
+    return h;
+  }
+
   // ── Domains ──
 
   async getDomain(name) {
     const safe = String(name).toLowerCase();
-    const res  = await fetch(`${this.base}/janu_domains/${encodeURIComponent(safe)}`);
+    const res  = await fetch(`${this.base}/janu_domains/${encodeURIComponent(safe)}`, {
+      headers: await this._headers()
+    });
     if (!res.ok) return null;
     const doc  = await res.json();
     return this._unpackDomain(safe, doc);
   }
 
   async listAllDomains() {
-    const res = await fetch(`${this.base}/janu_domains`);
+    const res = await fetch(`${this.base}/janu_domains`, {
+      headers: await this._headers()
+    });
     if (!res.ok) return [];
     const data = await res.json();
     if (!data.documents) return [];
@@ -36,7 +57,6 @@ export class FirestoreAdapter extends StorageAdapter {
   }
 
   async listDomainsByOwner(email) {
-    // Firestore REST query
     const q = {
       structuredQuery: {
         from:  [{ collectionId: 'janu_domains' }],
@@ -51,7 +71,7 @@ export class FirestoreAdapter extends StorageAdapter {
     };
     const res = await fetch(`${this.base}:runQuery`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await this._headers(),
       body:    JSON.stringify(q)
     });
     if (!res.ok) return [];
@@ -65,8 +85,7 @@ export class FirestoreAdapter extends StorageAdapter {
   }
 
   async createDomain(data) {
-    const name = String(data.name).toLowerCase();
-    // Check uniqueness
+    const name   = String(data.name).toLowerCase();
     const exists = await this.getDomain(name);
     if (exists) throw new Error('Domain already taken');
 
@@ -85,7 +104,7 @@ export class FirestoreAdapter extends StorageAdapter {
       `${this.base}/janu_domains?documentId=${encodeURIComponent(name)}`,
       {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await this._headers(),
         body:    JSON.stringify(body)
       }
     );
@@ -99,13 +118,13 @@ export class FirestoreAdapter extends StorageAdapter {
   async deleteDomain(name) {
     const safe = String(name).toLowerCase();
     const res  = await fetch(`${this.base}/janu_domains/${encodeURIComponent(safe)}`, {
-      method: 'DELETE'
+      method:  'DELETE',
+      headers: await this._headers()
     });
     return res.ok;
   }
 
   async incrementVisits(name) {
-    // Not atomic — read then write. Phase 4 we'll move this to a server function.
     const safe    = String(name).toLowerCase();
     const current = await this.getDomain(safe);
     if (!current) return null;
@@ -114,7 +133,7 @@ export class FirestoreAdapter extends StorageAdapter {
     const url = `${this.base}/janu_domains/${encodeURIComponent(safe)}?updateMask.fieldPaths=visits`;
     await fetch(url, {
       method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await this._headers(),
       body:    JSON.stringify({ fields: { visits: { integerValue: String(next) } } })
     });
     return next;
@@ -123,7 +142,9 @@ export class FirestoreAdapter extends StorageAdapter {
   // ── Users ──
 
   async getUser(uid) {
-    const res = await fetch(`${this.base}/janu_users/${encodeURIComponent(uid)}`);
+    const res = await fetch(`${this.base}/janu_users/${encodeURIComponent(uid)}`, {
+      headers: await this._headers()
+    });
     if (!res.ok) return null;
     const doc = await res.json();
     return {
@@ -144,14 +165,14 @@ export class FirestoreAdapter extends StorageAdapter {
       `${this.base}/janu_users?documentId=${encodeURIComponent(uid)}`,
       {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await this._headers(),
         body:    JSON.stringify(body)
       }
     );
     return res.ok;
   }
 
-  // ── Internal: convert Firestore doc → normalized shape ──
+  // ── Internal: Firestore doc → normalized shape ──
 
   _unpackDomain(name, doc) {
     const f = doc.fields || {};

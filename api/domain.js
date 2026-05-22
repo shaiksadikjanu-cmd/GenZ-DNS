@@ -2,7 +2,7 @@
 // Handles: /domains/:user/:domain  (rewritten via vercel.json to /api/domain)
 // Storage access goes through the adapter — backend-agnostic.
 
-import { getStorage } from '../lib/storage/index.js';
+import { getStorage } from '../public/lib/storage/index.js';
 
 export default async function handler(req, res) {
   const domainName = req.query.domain;
