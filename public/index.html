@@ -409,7 +409,12 @@ margin-bottom:-1px;">Workspace</button>
       const card = document.createElement('div');
       card.className = 'domain-card';
 
-      const publicUrl   = `https://gen-z-dns.vercel.app${meta.urlPrefix}/${ownerSlug}/${encodeURIComponent(d.name)}`;
+      // UID-based URL for BYOS backends — no username needed
+      const isByos      = backendKey !== 'firestore';
+      const userUid     = auth.currentUser?.uid || 'unknown';
+      const publicUrl   = isByos
+        ? `https://gen-z-dns.vercel.app/d/${userUid}/${encodeURIComponent(d.name)}`
+        : `https://gen-z-dns.vercel.app/domains/${ownerSlug}/${encodeURIComponent(d.name)}`;
       const viewerUrl   = `chrome-extension://${EXT_ID}/viewer.html?domain=${encodeURIComponent(d.name)}&url=${encodeURIComponent(d.targetUrl)}&user=${ownerSlug}`;
 
       card.innerHTML = `
