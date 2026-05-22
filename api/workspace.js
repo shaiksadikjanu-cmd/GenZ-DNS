@@ -23,21 +23,21 @@ async function verifyToken(token) {
 
 export default async function handler(req, res) {
   try {
+
     if (req.method === 'POST') {
-      const { token, encryptedConfig } = req.body;
+      const { token, encryptedConfig, publicConfig } = req.body;
       if (!token || !encryptedConfig) {
         return res.status(400).json({ error: 'Missing token or encryptedConfig' });
       }
 
       const uid = await verifyToken(token);
 
-      // Use the user's own Firebase token to write — satisfies Firestore auth rules
       const authHeaders = {
         'Content-Type':  'application/json',
         'Authorization': `Bearer ${token}`
       };
 
-      // Try PATCH first (update existing doc)
+      // ── Step 1: Save encrypted config ──
       let fsRes = await fetch(
         `${FIRESTORE}/janu_users/${uid}?updateMask.fieldPaths=workspaceConfig`,
         {
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
         }
       );
 
-      // If doc doesn't exist, create it
+      // If doc doesn't exist yet, create it
       if (fsRes.status === 404 || fsRes.status === 400) {
         fsRes = await fetch(
           `${FIRESTORE}/janu_users?documentId=${uid}`,
@@ -69,41 +69,37 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Failed to save config: ' + fsRes.status });
       }
 
-      // Save public workspace lookup (keyed by username slug)
-      // anon key is designed to be public — secured by RLS/Firestore rules
-      const { publicConfig, ownerSlug } = req.body;
-      if (publicConfig && ownerSlug) {
+      // ── Step 2: Save public backend config into janu_users/{uid} ──
+      // anon key is public by design — secured by Supabase RLS policies
+      // We store it here so /d/{uid}/{domain} public URLs can resolve the backend
+      if (publicConfig) {
         const pubFields = {
-          backend: { stringValue: publicConfig.backend },
-          uid:     { stringValue: uid }
+          publicBackend: { stringValue: publicConfig.backend }
         };
-        if (publicConfig.url)       pubFields.supabaseUrl       = { stringValue: publicConfig.url };
-        if (publicConfig.anonKey)   pubFields.supabaseAnonKey   = { stringValue: publicConfig.anonKey };
-        if (publicConfig.projectId) pubFields.firestoreProjectId = { stringValue: publicConfig.projectId };
+        if (publicConfig.url)       pubFields.publicSupabaseUrl          = { stringValue: publicConfig.url };
+        if (publicConfig.anonKey)   pubFields.publicSupabaseAnonKey      = { stringValue: publicConfig.anonKey };
+        if (publicConfig.projectId) pubFields.publicFirestoreProjectId   = { stringValue: publicConfig.projectId };
 
-        // Write to janu_public_workspaces/{slug} — direct lookup, no query needed
-        const slugKey = encodeURIComponent(ownerSlug.toLowerCase());
-        await fetch(
-          `${FIRESTORE}/janu_public_workspaces?documentId=${slugKey}`,
-          {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body:    JSON.stringify({ fields: pubFields })
-          }
-        ).catch(async () => {
-          // Document may already exist — try PATCH instead
-          await fetch(
-            `${FIRESTORE}/janu_public_workspaces/${slugKey}`,
-            {
-              method:  'PATCH',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-              body:    JSON.stringify({ fields: pubFields })
-            }
-          ).catch(e => console.warn('public workspace save failed:', e));
+        const mask = Object.keys(pubFields)
+          .map(k => `updateMask.fieldPaths=${k}`)
+          .join('&');
+
+        const pubRes = await fetch(`${FIRESTORE}/janu_users/${uid}?${mask}`, {
+          method:  'PATCH',
+          headers: authHeaders,
+          body:    JSON.stringify({ fields: pubFields })
         });
+
+        if (!pubRes.ok) {
+          // Log but don't fail the whole request — encrypted config already saved
+          console.warn('publicBackend save failed:', pubRes.status, await pubRes.text().catch(() => ''));
+        } else {
+          console.log('publicBackend saved for uid:', uid, 'backend:', publicConfig.backend);
+        }
       }
 
       return res.status(200).json({ ok: true });
+
     } else if (req.method === 'GET') {
       const token = req.query.token;
       if (!token) return res.status(400).json({ error: 'Missing token' });

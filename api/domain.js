@@ -7,23 +7,22 @@ import { getStorage } from '../public/lib/storage/index.js';
 export default async function handler(req, res) {
   const domainName = req.query.domain;
   const ownerUser  = req.query.user;
-  const backend    = req.query.backend || 'janunet';
+  const backend = req.query.backend || 'janunet';
+  const uid     = req.query.uid     || null;
 
   if (!domainName) {
     return res.status(400).send(errorPage('No domain specified.'));
   }
 
-  // For non-default backends, look up user's config from Firestore
   let storage;
-  if (backend === 'supabase' || backend === 'firebase') {
-    storage = await getUserStorage(ownerUser, backend);
+  if (backend === 'byos' && uid) {
+    storage = await getUserStorage(uid);
     if (!storage) {
-      return res.status(404).send(errorPage(`No ${backend} workspace found for user: ${ownerUser}`));
+      return res.status(404).send(errorPage(`No custom workspace found. Check your workspace settings.`));
     }
   } else {
     storage = getStorage();
   }
-
   let domain;
   try {
     domain = await storage.getDomain(domainName);
@@ -49,48 +48,31 @@ export default async function handler(req, res) {
 }
 
 // Look up user's custom backend config from our Firestore
-async function getUserStorage(ownerUser, backend) {
+async function getUserStorage(uid) {
   const PROJECT_ID = 'janunet-cloud';
   const FIRESTORE  = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
-  // Find user by display name / owner slug
-  const q = {
-    structuredQuery: {
-      from:  [{ collectionId: 'janu_users' }],
-      where: {
-        fieldFilter: {
-          field: { fieldPath: 'username' },
-          op:    'EQUAL',
-          value: { stringValue: ownerUser }
-        }
-      },
-      limit: 1
-    }
-  };
-
-  const res  = await fetch(`${FIRESTORE}:runQuery`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(q)
-  });
-
+  // Read public backend config from janu_users/{uid}
+  // Rules allow public reads on janu_users
+  const res = await fetch(`${FIRESTORE}/janu_users/${uid}`);
   if (!res.ok) return null;
-  const rows = await res.json();
-  const doc  = rows[0]?.document;
-  if (!doc) return null;
 
-  const f = doc.fields || {};
+  const doc = await res.json();
+  const f   = doc.fields || {};
+
+  const backend = f.publicBackend?.stringValue;
+  if (!backend || backend === 'janunet') return null; // use default
 
   if (backend === 'supabase') {
-    const url     = f.supabaseUrl?.stringValue;
-    const anonKey = f.supabaseAnonKey?.stringValue;
+    const url     = f.publicSupabaseUrl?.stringValue;
+    const anonKey = f.publicSupabaseAnonKey?.stringValue;
     if (!url || !anonKey) return null;
     const { SupabaseAdapter } = await import('../public/lib/storage/SupabaseAdapter.js');
     return new SupabaseAdapter({ url, anonKey });
   }
 
-  if (backend === 'firebase') {
-    const projectId = f.firestoreProjectId?.stringValue;
+  if (backend === 'firestore-custom') {
+    const projectId = f.publicFirestoreProjectId?.stringValue;
     if (!projectId) return null;
     const { FirestoreAdapter } = await import('../public/lib/storage/FirestoreAdapter.js');
     return new FirestoreAdapter({ projectId });
