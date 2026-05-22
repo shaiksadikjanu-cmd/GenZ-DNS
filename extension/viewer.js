@@ -4,7 +4,7 @@
 const PROJECT_ID = "janunet-cloud";
 const PUBLIC_BASE     = "https://gen-z-dns.vercel.app/domains";
 const PUBLIC_BASE_UID = "https://gen-z-dns.vercel.app/d";
-const HARDCODED_UID = "zalbAt6CM2gR4pfvT8W2ICHxjAj1";
+
 
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
@@ -84,12 +84,16 @@ const wsData = await new Promise(resolve => {
   chrome.storage.local.get(['janunet_workspace'], d => resolve(d.janunet_workspace || {}));
 });
 
-// Priority: viewer URL param > workspace stored uid > hardcoded fallback (your account)
-const effectiveUid = ownerUid || wsData.ownerUid || (wsData.backend && wsData.backend !== 'janunet' ? HARDCODED_UID : null);
-
-const publicUrl = effectiveUid
-  ? `${PUBLIC_BASE_UID}/${effectiveUid}/${encodeURIComponent(customDomain)}`
-  : `${PUBLIC_BASE}/${encodeURIComponent(ownerUser)}/${encodeURIComponent(customDomain)}`;
+// URL format depends on user's active workspace backend
+let publicUrl;
+if (wsData.backend === 'firestore-custom' && wsData.projectId) {
+  publicUrl = `${PUBLIC_BASE_UID}/firebase-${encodeURIComponent(wsData.projectId)}/${encodeURIComponent(customDomain)}`;
+} else if ((wsData.backend === 'supabase' || ownerUid) && (wsData.ownerUid || ownerUid)) {
+  const effectiveUid = ownerUid || wsData.ownerUid;
+  publicUrl = `${PUBLIC_BASE_UID}/${effectiveUid}/${encodeURIComponent(customDomain)}`;
+} else {
+  publicUrl = `${PUBLIC_BASE}/${encodeURIComponent(ownerUser)}/${encodeURIComponent(customDomain)}`;
+}
   document.getElementById('ext-url').innerText = extUrl;
   document.getElementById('public-url').innerText = publicUrl;
 

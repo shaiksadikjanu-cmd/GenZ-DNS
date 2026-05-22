@@ -7,19 +7,25 @@ import { getStorage } from '../public/lib/storage/index.js';
 export default async function handler(req, res) {
   const domainName = req.query.domain;
   const ownerUser  = req.query.user;
-  const backend = req.query.backend || 'janunet';
-  const uid     = req.query.uid     || null;
+  const backend   = req.query.backend   || 'janunet';
+  const uid       = req.query.uid       || null;
+  const projectId = req.query.projectId || null;
 
   if (!domainName) {
     return res.status(400).send(errorPage('No domain specified.'));
   }
 
   let storage;
-  if (backend === 'byos' && uid) {
-    storage = await getUserStorage(uid);
+  if (backend === 'supabase' && uid) {
+    // Look up user's Supabase credentials by UID
+    storage = await getUserSupabase(uid);
     if (!storage) {
-      return res.status(404).send(errorPage(`No custom workspace found. Check your workspace settings.`));
+      return res.status(404).send(errorPage('No Supabase workspace found for this user.'));
     }
+  } else if (backend === 'firebase' && projectId) {
+    // Firebase project IDs are public — direct connect
+    const { FirestoreAdapter } = await import('../public/lib/storage/FirestoreAdapter.js');
+    storage = new FirestoreAdapter({ projectId });
   } else {
     storage = getStorage();
   }
@@ -48,12 +54,12 @@ export default async function handler(req, res) {
 }
 
 // Look up user's custom backend config from our Firestore
-async function getUserStorage(uid) {
+// Look up a user's Supabase credentials from our Firestore
+// (publicBackend fields are public — anon key is public by design)
+async function getUserSupabase(uid) {
   const PROJECT_ID = 'janunet-cloud';
   const FIRESTORE  = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
-  // Read public backend config from janu_users/{uid}
-  // Rules allow public reads on janu_users
   const res = await fetch(`${FIRESTORE}/janu_users/${uid}`);
   if (!res.ok) return null;
 
@@ -61,15 +67,15 @@ async function getUserStorage(uid) {
   const f   = doc.fields || {};
 
   const backend = f.publicBackend?.stringValue;
-  if (!backend || backend === 'janunet') return null; // use default
+  if (backend !== 'supabase') return null;
 
-  if (backend === 'supabase') {
-    const url     = f.publicSupabaseUrl?.stringValue;
-    const anonKey = f.publicSupabaseAnonKey?.stringValue;
-    if (!url || !anonKey) return null;
-    const { SupabaseAdapter } = await import('../public/lib/storage/SupabaseAdapter.js');
-    return new SupabaseAdapter({ url, anonKey });
-  }
+  const url     = f.publicSupabaseUrl?.stringValue;
+  const anonKey = f.publicSupabaseAnonKey?.stringValue;
+  if (!url || !anonKey) return null;
+
+  const { SupabaseAdapter } = await import('../public/lib/storage/SupabaseAdapter.js');
+  return new SupabaseAdapter({ url, anonKey });
+}
 
   if (backend === 'firestore-custom') {
     const projectId = f.publicFirestoreProjectId?.stringValue;

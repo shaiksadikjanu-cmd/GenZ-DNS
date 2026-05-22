@@ -6,8 +6,12 @@
       "destination": "/api/domain?user=:user&domain=:domain&backend=janunet"
     },
     {
+      "source": "/d/firebase-:projectId/:domain",
+      "destination": "/api/domain?projectId=:projectId&domain=:domain&backend=firebase"
+    },
+    {
       "source": "/d/:uid/:domain",
-      "destination": "/api/domain?uid=:uid&domain=:domain&backend=byos"
+      "destination": "/api/domain?uid=:uid&domain=:domain&backend=supabase"
     },
     {
       "source": "/api/(.*)",

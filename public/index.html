@@ -624,7 +624,8 @@ margin-bottom:-1px;">Workspace</button>
         chrome.runtime.sendMessage(JANUNET_EXT_ID, {
           action:    'workspaceUpdated',
           backend:   config.backend,
-          ownerUid:  user.uid
+          ownerUid:  user.uid,
+          projectId: config.projectId || null
         }, () => { /* ignore errors if extension not installed */ });
       }
     } catch(e) {
