@@ -1,0 +1,7 @@
+{
+  "latest": "2.0",
+  "minimum": "2.0",
+  "downloadUrl": "/GenZ-DNS-Extension.zip",
+  "releaseNotes": "Initial public release of JanuNet extension. Includes sidepanel with recents, favorites, autocomplete, omnibox support, browser-style viewer, and onboarding.",
+  "releasedAt": "2026-05-22"
+}

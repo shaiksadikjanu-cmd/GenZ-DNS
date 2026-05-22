@@ -2,16 +2,20 @@
   "manifest_version": 3,
   "name": "Janu DNS Overlay",
   "version": "2.0",
-  "description": "JanuNet — private domain overlay network for students.",
+  "description": "JanuNet — private domain overlay network for students and developers.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAll2ZPd93VOt3OSQlbTuxFK5Yo7ZGQfKLPpYKODWS0MR7/ZLVyObEpBpM4nKJXHd+nv5AjDMjswHlyn8OC3o6M2hEehMMqiBCQ4olA2UoeuvdPn0MsrCwLQ8ZdUyGz2BOb8u9ku8eBFg2IGz5Ks1tPhu2qsbYEQ0PSKRbWazHAzWUXIzLNZOjEABUGgjl1Zi3weCVHS7q8WGQ2mb/Vd/rafyW5bzNv2O3P/aF17kgV6Gml2pkID6TRTtw1bn38Y453uqMIiKz80ZO/xkIDcPeY8fRuwQRGhfQMo8cCSpuEhbxAUq26ZDX1lLxdp/bLp4/xUc8q1Dw6JPbLMsdMXwxqQIDAQAB",
   "permissions": [
     "storage",
     "declarativeNetRequest",
     "sidePanel",
-    "tabs"
+    "tabs",
+    "notifications",
+    "alarms"
   ],
   "host_permissions": [
     "https://firestore.googleapis.com/*",
-    "https://api.groq.com/*"
+    "https://api.groq.com/*",
+    "https://gen-z-dns.vercel.app/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -28,6 +32,12 @@
   },
   "omnibox": {
     "keyword": "j"
+  },
+  "externally_connectable": {
+    "matches": [
+      "https://gen-z-dns.vercel.app/*",
+      "http://localhost:*/*"
+    ]
   },
   "action": {
     "default_title": "JanuNet Command Center"

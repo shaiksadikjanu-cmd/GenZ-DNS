@@ -192,6 +192,15 @@
 </head>
 <body>
 
+<!-- ===== UPDATE BANNER (hidden by default) ===== -->
+<div id="update-banner" style="display:none;background:linear-gradient(90deg,#00ffcc 0%,#00ccaa 100%);color:#000;padding:10px 14px;font-size:12px;font-weight:600;display:none;align-items:center;justify-content:space-between;gap:8px;font-family:-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,system-ui,sans-serif;cursor:pointer;">
+  <span>🔄 Update available — <span id="banner-version">v?</span></span>
+  <span style="display:flex;gap:6px;align-items:center;">
+    <button id="banner-update" style="background:rgba(0,0,0,0.18);color:#000;border:none;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;text-transform:uppercase;">Update</button>
+    <button id="banner-dismiss" style="background:transparent;color:#000;border:none;padding:4px 6px;font-size:14px;cursor:pointer;line-height:1;" title="Dismiss">×</button>
+  </span>
+</div>
+
 <div class="topbar">
   <div class="brand">JANU<b>NET</b></div>
   <div class="search-wrap">

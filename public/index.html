@@ -426,5 +426,71 @@
     </div>
   </section>
 
+
+<!-- ============ PORTAL-SIDE EXTENSION VERSION CHECK ============ -->
+<div id="ext-update-banner" style="
+  display:none;
+  position:fixed;top:0;left:0;right:0;
+  background:linear-gradient(90deg,#1a73e8 0%,#1557b0 100%);
+  color:#fff;padding:12px 24px;
+  font-size:14px;font-weight:600;z-index:1000;
+  text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  box-shadow:0 4px 12px rgba(0,0,0,0.2);
+">
+  <span id="ext-update-text">🔔 Your JanuNet extension is outdated.</span>
+  <a href="/update.html" id="ext-update-link" style="
+    background:#fff;color:#1a73e8;
+    padding:6px 14px;border-radius:6px;
+    margin-left:14px;text-decoration:none;
+    font-weight:700;font-size:13px;display:inline-block;
+  ">Update Now</a>
+  <button onclick="document.getElementById('ext-update-banner').style.display='none'" style="
+    background:transparent;color:#fff;border:none;
+    margin-left:10px;font-size:18px;cursor:pointer;line-height:1;padding:0 4px;
+  ">×</button>
+</div>
+
+<script>
+(async function checkExtensionVersion() {
+  const EXTENSION_ID = "bhiglamcpgagajgdgikacilofimmpipm";
+
+  if (!chrome?.runtime?.sendMessage) return; // not Chrome / no extension API
+
+  try {
+    // Ping extension
+    chrome.runtime.sendMessage(EXTENSION_ID, { action: 'ping' }, async (response) => {
+      if (chrome.runtime.lastError || !response) return; // extension not installed
+      const installed = response.version;
+
+      // Fetch latest version
+      const res = await fetch('/version.json?t=' + Date.now());
+      const data = await res.json();
+
+      if (isVersionOutdated(installed, data.latest)) {
+        const banner = document.getElementById('ext-update-banner');
+        const text   = document.getElementById('ext-update-text');
+        const link   = document.getElementById('ext-update-link');
+        text.innerHTML = `🔔 Extension v${installed} is outdated — latest is v${data.latest}`;
+        link.href = '/update.html?current=' + encodeURIComponent(installed);
+        banner.style.display = 'block';
+        document.body.style.paddingTop = (banner.offsetHeight + 'px');
+      }
+    });
+  } catch(e) {
+    // silent fail — extension not installed or not allowed
+  }
+
+  function isVersionOutdated(a, b) {
+    const x = a.split('.').map(Number), y = b.split('.').map(Number);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) {
+      const xi = x[i]||0, yi = y[i]||0;
+      if (yi > xi) return true;
+      if (xi > yi) return false;
+    }
+    return false;
+  }
+})();
+</script>
+
 </body>
 </html>

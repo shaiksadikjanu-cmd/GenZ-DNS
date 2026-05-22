@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Update JanuNet — gen-z-dns</title>
+<style>
+  :root {
+    --bg:#0a0a0a; --surface:#121212; --surface2:#1a1a1a;
+    --border:#262626; --border-strong:#3a3a3a;
+    --text:#ededed; --text2:#9a9a9a; --text3:#5e5e5e;
+    --accent:#00ffcc; --accent-dim:rgba(0,255,204,0.08);
+    --warn:#ffb347;
+    --font-mono:"JetBrains Mono",ui-monospace,monospace;
+    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg);color:var(--text);font-family:var(--font-sans);
+    min-height:100vh;padding:40px 20px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .card{
+    width:100%;max-width:560px;background:var(--surface);
+    border:1px solid var(--border-strong);border-radius:16px;
+    padding:40px;box-shadow:0 24px 60px rgba(0,0,0,0.5);
+  }
+  .version-pill{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--accent-dim);border:1px solid rgba(0,255,204,0.2);
+    color:var(--accent);font-family:var(--font-mono);font-size:11px;
+    letter-spacing:1px;text-transform:uppercase;
+    padding:5px 12px;border-radius:999px;margin-bottom:20px;
+  }
+  h1{font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:8px;}
+  .subtitle{color:var(--text2);font-size:14px;margin-bottom:28px;line-height:1.6;}
+
+  .version-row{
+    display:flex;gap:12px;margin-bottom:28px;
+  }
+  .v-box{
+    flex:1;background:var(--surface2);border:1px solid var(--border);
+    border-radius:10px;padding:14px;text-align:center;
+  }
+  .v-box .label{font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+  .v-box .num{font-family:var(--font-mono);font-size:22px;font-weight:700;color:var(--text);}
+  .v-box.current .num{color:var(--text2);}
+  .v-box.latest .num{color:var(--accent);}
+  .arrow{display:flex;align-items:center;color:var(--text3);font-size:18px;}
+
+  .notes-box{
+    background:var(--surface2);border:1px solid var(--border);
+    border-radius:10px;padding:18px;margin-bottom:28px;
+  }
+  .notes-label{
+    font-size:10px;color:var(--text3);letter-spacing:1px;
+    text-transform:uppercase;margin-bottom:10px;
+  }
+  .notes-text{font-size:13px;color:var(--text2);line-height:1.6;}
+
+  .btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;padding:16px;background:var(--accent);color:#000;
+    border:none;border-radius:10px;font-size:15px;font-weight:700;
+    cursor:pointer;text-decoration:none;letter-spacing:0.3px;
+    transition:background 120ms,transform 120ms;font-family:var(--font-sans);
+    margin-bottom:12px;
+  }
+  .btn:hover{background:#4cffd9;transform:translateY(-1px);}
+
+  .steps{
+    margin-top:28px;padding-top:24px;border-top:1px solid var(--border);
+  }
+  .steps-title{font-size:12px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;}
+  .step{
+    display:flex;gap:14px;margin-bottom:14px;font-size:13px;color:var(--text2);
+    line-height:1.6;
+  }
+  .step-num{
+    flex-shrink:0;width:24px;height:24px;
+    background:var(--surface2);border:1px solid var(--border);
+    border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-mono);font-size:11px;color:var(--accent);font-weight:700;
+  }
+  .step code{
+    background:var(--surface2);padding:2px 6px;border-radius:4px;
+    font-family:var(--font-mono);font-size:12px;color:var(--accent);
+  }
+  .footer-link{
+    text-align:center;margin-top:24px;font-size:11px;color:var(--text3);
+    font-family:var(--font-mono);
+  }
+  .footer-link a{color:var(--text3);text-decoration:none;}
+  .footer-link a:hover{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="version-pill">🔄 Update Available</div>
+  <h1>A new version of JanuNet is ready.</h1>
+  <p class="subtitle">Updating gives you the latest features, fixes, and security improvements. Takes 30 seconds.</p>
+
+  <div class="version-row">
+    <div class="v-box current">
+      <div class="label">You have</div>
+      <div class="num" id="current-version">—</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="v-box latest">
+      <div class="label">Latest</div>
+      <div class="num" id="latest-version">—</div>
+    </div>
+  </div>
+
+  <div class="notes-box">
+    <div class="notes-label">📝 What's New</div>
+    <div class="notes-text" id="release-notes">Loading…</div>
+  </div>
+
+  <a class="btn" href="/GenZ-DNS-Extension.zip" download>
+    ⬇  Download v<span id="dl-version">latest</span>
+  </a>
+
+  <div class="steps">
+    <div class="steps-title">How to install</div>
+    <div class="step"><div class="step-num">1</div><div>Download the ZIP above and extract it.</div></div>
+    <div class="step"><div class="step-num">2</div><div>Open <code>chrome://extensions</code> in your browser.</div></div>
+    <div class="step"><div class="step-num">3</div><div>Find <b>Janu DNS Overlay</b> → click <b>Remove</b> (your data stays safe — favorites, recents, login).</div></div>
+    <div class="step"><div class="step-num">4</div><div>Click <b>Load unpacked</b> → select the new <code>extension</code> folder.</div></div>
+  </div>
+
+  <div class="footer-link">
+    <a href="/">← back to JanuNet portal</a>
+  </div>
+</div>
+
+<script>
+(async () => {
+  const params = new URLSearchParams(window.location.search);
+  const installed = params.get('current') || 'unknown';
+
+  document.getElementById('current-version').innerText = 'v' + installed;
+
+  try {
+    const res = await fetch('/version.json');
+    const data = await res.json();
+    document.getElementById('latest-version').innerText = 'v' + data.latest;
+    document.getElementById('dl-version').innerText = data.latest;
+    document.getElementById('release-notes').innerText = data.releaseNotes || 'No release notes available.';
+  } catch(e) {
+    document.getElementById('latest-version').innerText = 'v?';
+    document.getElementById('release-notes').innerText = 'Could not fetch release info.';
+  }
+})();
+</script>
+</body>
+</html>

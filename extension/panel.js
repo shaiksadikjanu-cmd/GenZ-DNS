@@ -239,3 +239,68 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2000);
 }
+
+
+// ═══════════════════════════════════════════════════════════
+// UPDATE BANNER — checks chrome.storage for version info
+// ═══════════════════════════════════════════════════════════
+const PORTAL_BASE_PANEL = "https://gen-z-dns.vercel.app";
+
+function isOutdatedPanel(installed, latest) {
+  const a = installed.split('.').map(Number);
+  const b = latest.split('.').map(Number);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const ai = a[i] || 0, bi = b[i] || 0;
+    if (bi > ai) return true;
+    if (ai > bi) return false;
+  }
+  return false;
+}
+
+function initUpdateBanner() {
+  const banner = document.getElementById('update-banner');
+  if (!banner) return;
+
+  chrome.storage.local.get(['janu_versionInfo', 'janu_dismissedVersion'], data => {
+    const info = data.janu_versionInfo;
+    if (!info) return;
+    if (data.janu_dismissedVersion === info.latest) return; // user dismissed this version
+    if (!isOutdatedPanel(info.installed, info.latest)) return;
+
+    document.getElementById('banner-version').innerText = 'v' + info.latest;
+    banner.style.display = 'flex';
+  });
+
+  document.getElementById('banner-update')?.addEventListener('click', e => {
+    e.stopPropagation();
+    chrome.storage.local.get(['janu_versionInfo'], d => {
+      const v = d.janu_versionInfo?.installed || '';
+      chrome.tabs.create({ url: `${PORTAL_BASE_PANEL}/update.html?current=${v}` });
+    });
+  });
+
+  document.getElementById('banner-dismiss')?.addEventListener('click', e => {
+    e.stopPropagation();
+    chrome.storage.local.get(['janu_versionInfo'], d => {
+      if (d.janu_versionInfo) {
+        chrome.storage.local.set({ janu_dismissedVersion: d.janu_versionInfo.latest });
+      }
+    });
+    document.getElementById('update-banner').style.display = 'none';
+  });
+
+  // Clicking the banner area (not buttons) → open update
+  document.getElementById('update-banner')?.addEventListener('click', () => {
+    chrome.storage.local.get(['janu_versionInfo'], d => {
+      const v = d.janu_versionInfo?.installed || '';
+      chrome.tabs.create({ url: `${PORTAL_BASE_PANEL}/update.html?current=${v}` });
+    });
+  });
+}
+
+// Run on DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initUpdateBanner);
+} else {
+  initUpdateBanner();
+}
