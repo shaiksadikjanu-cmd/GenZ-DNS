@@ -22,7 +22,7 @@ async function resolveWithWorkspace(domain) {
     if (!res.ok) return null;
     const rows = await res.json();
     if (!rows.length) return null;
-    return { targetUrl: rows[0].target_url, ownerName: rows[0].owner_name || 'unknown', visits: rows[0].visits || 0 };
+    return { targetUrl: rows[0].target_url, ownerName: rows[0].owner_name || 'unknown', visits: rows[0].visits || 0, ownerUid: rows[0].owner_uid || null };
 
   } else if (cfg.backend === 'firestore-custom' && cfg.projectId) {
     // Query user's Firestore directly
@@ -34,10 +34,11 @@ async function resolveWithWorkspace(domain) {
     const doc = await res.json();
     const f   = doc.fields || {};
     return {
-      targetUrl: f.targetUrl?.stringValue  || '',
-      ownerName: f.ownerName?.stringValue  || 'unknown',
-      visits:    parseInt(f.visits?.integerValue || '0', 10)
-    };
+  targetUrl: f.targetUrl?.stringValue  || '',
+  ownerName: f.ownerName?.stringValue  || 'unknown',
+  ownerUid:  f.ownerUid?.stringValue   || null,
+  visits:    parseInt(f.visits?.integerValue || '0', 10)
+};
 
   } else {
     // JanuNet default — use resolve API
@@ -135,7 +136,7 @@ async function navigate(domainOverride) {
     const data = await resolveWithWorkspace(query);
     if (data?.targetUrl) {
       addRecent(query, data.targetUrl);
-      openViewer(query, data.targetUrl, data.ownerName || 'unknown');
+      openViewer(query, data.targetUrl, data.ownerName || 'unknown', data.ownerUid || null);
       return;
     }
   } catch(e) { /* fall through */ }
@@ -143,9 +144,10 @@ async function navigate(domainOverride) {
   showToast(`⚠️ not found: ${query}`);
 }
 
-function openViewer(domain, url, owner) {
+function openViewer(domain, url, owner, uid) {
+  const uidParam = uid ? `&uid=${encodeURIComponent(uid)}` : '';
   const viewerUrl = chrome.runtime.getURL(
-    `viewer.html?domain=${encodeURIComponent(domain)}&url=${encodeURIComponent(url)}&user=${encodeURIComponent(owner)}`
+    `viewer.html?domain=${encodeURIComponent(domain)}&url=${encodeURIComponent(url)}&user=${encodeURIComponent(owner)}${uidParam}`
   );
   chrome.tabs.create({ url: viewerUrl });
 }
@@ -271,7 +273,7 @@ function attachRowListeners(container) {
       const url    = row.getAttribute('data-url');
       if (domain && url) {
         addRecent(domain, url);
-        openViewer(domain, url, 'unknown');
+        openViewer(domain, url, 'unknown', null);
       } else if (domain) {
         navigate(domain);
       }

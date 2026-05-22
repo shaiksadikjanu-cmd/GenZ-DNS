@@ -30,6 +30,7 @@ export default async function handler(req, res) {
       name:      result.name,
       targetUrl: result.targetUrl,
       ownerName: result.ownerName,
+      ownerUid:  result.ownerUid  || null,
       visits:    result.visits
     });
   } catch(e) {

@@ -2,13 +2,15 @@
 // Handles: topbar display, nav (back/fwd/refresh), visit counter, share modal, QR generation
 
 const PROJECT_ID = "janunet-cloud";
-const PUBLIC_BASE = "https://gen-z-dns.vercel.app/domains"; // public URL base — Phase 3 wires this for real
+const PUBLIC_BASE     = "https://gen-z-dns.vercel.app/domains";
+const PUBLIC_BASE_UID = "https://gen-z-dns.vercel.app/d";
 
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);
   const customDomain = params.get('domain');
   const targetUrl = params.get('url');
-  const ownerUser = params.get('user') || 'unknown'; // optional, falls back
+  const ownerUser = params.get('user') || 'unknown';
+const ownerUid  = params.get('uid')  || null;
 
   const iframe   = document.getElementById('content-frame');
   const urlDom   = document.getElementById('url-domain');
@@ -75,8 +77,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // === Share modal ===
   const modal = document.getElementById('share-modal');
   const extUrl = `janunet://${customDomain}`;
-  const publicUrl = `${PUBLIC_BASE}/${encodeURIComponent(ownerUser)}/${encodeURIComponent(customDomain)}`;
-
+  // Use UID-based URL for BYOS domains, name-based for JanuNet default
+const publicUrl = ownerUid
+  ? `${PUBLIC_BASE_UID}/${ownerUid}/${encodeURIComponent(customDomain)}`
+  : `${PUBLIC_BASE}/${encodeURIComponent(ownerUser)}/${encodeURIComponent(customDomain)}`;
   document.getElementById('ext-url').innerText = extUrl;
   document.getElementById('public-url').innerText = publicUrl;
 
