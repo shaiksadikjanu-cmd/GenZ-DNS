@@ -69,22 +69,38 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Failed to save config: ' + fsRes.status });
       }
 
-      // Also save public backend config (anon key is public by design)
-      const { publicConfig } = req.body;
-      if (publicConfig) {
-        const pubFields = { backend: { stringValue: publicConfig.backend } };
-        if (publicConfig.url)       pubFields.supabaseUrl    = { stringValue: publicConfig.url };
-        if (publicConfig.anonKey)   pubFields.supabaseAnonKey = { stringValue: publicConfig.anonKey };
+      // Save public workspace lookup (keyed by username slug)
+      // anon key is designed to be public — secured by RLS/Firestore rules
+      const { publicConfig, ownerSlug } = req.body;
+      if (publicConfig && ownerSlug) {
+        const pubFields = {
+          backend: { stringValue: publicConfig.backend },
+          uid:     { stringValue: uid }
+        };
+        if (publicConfig.url)       pubFields.supabaseUrl       = { stringValue: publicConfig.url };
+        if (publicConfig.anonKey)   pubFields.supabaseAnonKey   = { stringValue: publicConfig.anonKey };
         if (publicConfig.projectId) pubFields.firestoreProjectId = { stringValue: publicConfig.projectId };
 
+        // Write to janu_public_workspaces/{slug} — direct lookup, no query needed
+        const slugKey = encodeURIComponent(ownerSlug.toLowerCase());
         await fetch(
-          `${FIRESTORE}/janu_users/${uid}?updateMask.fieldPaths=backend&updateMask.fieldPaths=supabaseUrl&updateMask.fieldPaths=supabaseAnonKey&updateMask.fieldPaths=firestoreProjectId`,
+          `${FIRESTORE}/janu_public_workspaces?documentId=${slugKey}`,
           {
-            method:  'PATCH',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body:    JSON.stringify({ fields: pubFields })
           }
-        ).catch(e => console.warn('publicConfig save failed:', e));
+        ).catch(async () => {
+          // Document may already exist — try PATCH instead
+          await fetch(
+            `${FIRESTORE}/janu_public_workspaces/${slugKey}`,
+            {
+              method:  'PATCH',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body:    JSON.stringify({ fields: pubFields })
+            }
+          ).catch(e => console.warn('public workspace save failed:', e));
+        });
       }
 
       return res.status(200).json({ ok: true });

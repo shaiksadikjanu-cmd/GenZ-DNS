@@ -591,7 +591,17 @@ margin-bottom:-1px;">Workspace</button>
       const res = await fetch("/api/workspace", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ token, encryptedConfig: encrypted })
+        body:    JSON.stringify({
+          token,
+          encryptedConfig: encrypted,
+          ownerSlug: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'user',
+          publicConfig: config.backend === 'janunet' ? null : {
+            backend:   config.backend,
+            url:       config.url       || null,
+            anonKey:   config.anonKey   || null,
+            projectId: config.projectId || null
+          }
+        })
       });
 
       if (!res.ok) throw new Error(await res.text());
