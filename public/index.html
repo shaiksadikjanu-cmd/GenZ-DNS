@@ -55,7 +55,7 @@
     .btn-outline:hover { background:var(--bg); border-color:var(--text-dim); }
     .btn-danger { background:transparent; color:var(--danger); border:1px solid var(--danger); }
     .btn-danger:hover { background:var(--danger); color:#fff; }
-    .domain-card { background:var(--bg); border:1px solid var(--border); padding:20px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; border-radius:10px; transition:0.2s; }
+    .domain-card { background:var(--bg); border:1px solid var(--border); padding:20px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:flex-start; border-radius:10px; transition:0.2s; }
     .domain-card:hover { border-color:var(--primary); }
     .domain-name { font-family:'Courier New',monospace; font-size:18px; font-weight:bold; margin-bottom:5px; }
     .target-url { color:var(--text-dim); font-size:13px; }
@@ -387,19 +387,86 @@ margin-bottom:-1px;">Workspace</button>
       container.innerHTML = `<div style="text-align:center;padding:40px;background:var(--bg);border:1px dashed var(--border);border-radius:8px;"><p style="color:var(--text-dim);margin:0;">No active routes. Deploy your first domain above!</p></div>`;
       return;
     }
+    // Detect active backend
+    const wsConfig  = storage.backendName || 'firestore';
+    const backendKey = wsConfig;
+
+    const BACKEND_META = {
+      firestore:          { label: '🔥 JanuNet Default', urlPrefix: '/domains',          color: '#1a73e8' },
+      supabase:           { label: '⚡ Supabase',         urlPrefix: '/domains-supabase',  color: '#3ecf8e' },
+      'firestore-custom': { label: '🔥 My Firebase',      urlPrefix: '/domains-firebase',  color: '#ff6d00' }
+    };
+    const meta = BACKEND_META[backendKey] || BACKEND_META.firestore;
+
+    // Get current user's display name for public URLs
+    const ownerSlug = encodeURIComponent(
+      auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'user'
+    );
+
+    const EXT_ID = 'bhiglamcpgagajgdgikacilofimmpipm';
+
     domains.forEach(d => {
       const card = document.createElement('div');
       card.className = 'domain-card';
+
+      const publicUrl   = `https://gen-z-dns.vercel.app${meta.urlPrefix}/${ownerSlug}/${encodeURIComponent(d.name)}`;
+      const viewerUrl   = `chrome-extension://${EXT_ID}/viewer.html?domain=${encodeURIComponent(d.name)}&url=${encodeURIComponent(d.targetUrl)}&user=${ownerSlug}`;
+
       card.innerHTML = `
-        <div>
-          <div class="domain-name">${d.name}<span class="badge">👁️ ${d.visits || 0} views</span></div>
-          <div class="target-url">↳ ${d.targetUrl}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+            <div class="domain-name" style="margin:0;">${d.name}</div>
+            <span class="badge" style="background:${meta.color}22;color:${meta.color};border:1px solid ${meta.color}44;font-size:11px;">
+              ${meta.label}
+            </span>
+            <span class="badge">👁️ ${d.visits || 0} views</span>
+          </div>
+          <div class="target-url" style="margin-bottom:10px;">↳ ${d.targetUrl}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <a href="${viewerUrl}" target="_blank" style="
+              display:inline-flex;align-items:center;gap:5px;
+              padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;
+              background:var(--badge-bg);color:var(--badge-text);
+              border:1px solid var(--border);text-decoration:none;
+              transition:0.15s;
+            " title="Open in JanuNet Extension">🧩 Open in Extension</a>
+            <a href="${d.targetUrl}" target="_blank" rel="noopener" style="
+              display:inline-flex;align-items:center;gap:5px;
+              padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;
+              background:var(--bg);color:var(--text-dim);
+              border:1px solid var(--border);text-decoration:none;
+              transition:0.15s;
+            " title="Open target site directly">🌐 Open Site</a>
+            <button onclick="copyShareLink('${publicUrl}')" style="
+              display:inline-flex;align-items:center;gap:5px;
+              padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;
+              background:var(--bg);color:var(--text-dim);
+              border:1px solid var(--border);cursor:pointer;
+              transition:0.15s;
+            " title="Copy public share link">🔗 Share Link</button>
+          </div>
         </div>
-        <button class="btn-danger" style="padding:8px 16px;" onclick="deleteDomain('${d.name}')">Delete</button>
+        <button class="btn-danger" style="padding:8px 16px;margin-left:12px;flex-shrink:0;" onclick="deleteDomain('${d.name}')">Delete</button>
       `;
       container.appendChild(card);
     });
   }
+
+  // Copy share link to clipboard with toast feedback
+  window.copyShareLink = function(url) {
+    navigator.clipboard.writeText(url).then(() => {
+      const toast = document.createElement('div');
+      toast.innerText = '🔗 Share link copied!';
+      toast.style.cssText = `
+        position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+        background:#1a1a1a;color:#ededed;padding:10px 20px;
+        border-radius:8px;font-size:13px;z-index:9999;
+        border:1px solid #333;box-shadow:0 8px 24px rgba(0,0,0,0.4);
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2500);
+    });
+  };
 
   // ══════════════════════════════════════════════════════
   // WORKSPACE — tab switching + backend config + save/load

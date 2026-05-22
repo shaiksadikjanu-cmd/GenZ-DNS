@@ -69,8 +69,25 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Failed to save config: ' + fsRes.status });
       }
 
-      return res.status(200).json({ ok: true });
+      // Also save public backend config (anon key is public by design)
+      const { publicConfig } = req.body;
+      if (publicConfig) {
+        const pubFields = { backend: { stringValue: publicConfig.backend } };
+        if (publicConfig.url)       pubFields.supabaseUrl    = { stringValue: publicConfig.url };
+        if (publicConfig.anonKey)   pubFields.supabaseAnonKey = { stringValue: publicConfig.anonKey };
+        if (publicConfig.projectId) pubFields.firestoreProjectId = { stringValue: publicConfig.projectId };
 
+        await fetch(
+          `${FIRESTORE}/janu_users/${uid}?updateMask.fieldPaths=backend&updateMask.fieldPaths=supabaseUrl&updateMask.fieldPaths=supabaseAnonKey&updateMask.fieldPaths=firestoreProjectId`,
+          {
+            method:  'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body:    JSON.stringify({ fields: pubFields })
+          }
+        ).catch(e => console.warn('publicConfig save failed:', e));
+      }
+
+      return res.status(200).json({ ok: true });
     } else if (req.method === 'GET') {
       const token = req.query.token;
       if (!token) return res.status(400).json({ error: 'Missing token' });

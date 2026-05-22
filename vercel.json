@@ -3,7 +3,15 @@
   "rewrites": [
     {
       "source": "/domains/:user/:domain",
-      "destination": "/api/domain?user=:user&domain=:domain"
+      "destination": "/api/domain?user=:user&domain=:domain&backend=janunet"
+    },
+    {
+      "source": "/domains-supabase/:user/:domain",
+      "destination": "/api/domain?user=:user&domain=:domain&backend=supabase"
+    },
+    {
+      "source": "/domains-firebase/:user/:domain",
+      "destination": "/api/domain?user=:user&domain=:domain&backend=firebase"
     },
     {
       "source": "/api/(.*)",

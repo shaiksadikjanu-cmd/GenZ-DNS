@@ -7,12 +7,23 @@ import { getStorage } from '../public/lib/storage/index.js';
 export default async function handler(req, res) {
   const domainName = req.query.domain;
   const ownerUser  = req.query.user;
+  const backend    = req.query.backend || 'janunet';
 
   if (!domainName) {
     return res.status(400).send(errorPage('No domain specified.'));
   }
 
-  const storage = getStorage();
+  // For non-default backends, look up user's config from Firestore
+  let storage;
+  if (backend === 'supabase' || backend === 'firebase') {
+    storage = await getUserStorage(ownerUser, backend);
+    if (!storage) {
+      return res.status(404).send(errorPage(`No ${backend} workspace found for user: ${ownerUser}`));
+    }
+  } else {
+    storage = getStorage();
+  }
+
   let domain;
   try {
     domain = await storage.getDomain(domainName);
@@ -37,6 +48,56 @@ export default async function handler(req, res) {
   }));
 }
 
+// Look up user's custom backend config from our Firestore
+async function getUserStorage(ownerUser, backend) {
+  const PROJECT_ID = 'janunet-cloud';
+  const FIRESTORE  = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+
+  // Find user by display name / owner slug
+  const q = {
+    structuredQuery: {
+      from:  [{ collectionId: 'janu_users' }],
+      where: {
+        fieldFilter: {
+          field: { fieldPath: 'username' },
+          op:    'EQUAL',
+          value: { stringValue: ownerUser }
+        }
+      },
+      limit: 1
+    }
+  };
+
+  const res  = await fetch(`${FIRESTORE}:runQuery`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(q)
+  });
+
+  if (!res.ok) return null;
+  const rows = await res.json();
+  const doc  = rows[0]?.document;
+  if (!doc) return null;
+
+  const f = doc.fields || {};
+
+  if (backend === 'supabase') {
+    const url     = f.supabaseUrl?.stringValue;
+    const anonKey = f.supabaseAnonKey?.stringValue;
+    if (!url || !anonKey) return null;
+    const { SupabaseAdapter } = await import('../public/lib/storage/SupabaseAdapter.js');
+    return new SupabaseAdapter({ url, anonKey });
+  }
+
+  if (backend === 'firebase') {
+    const projectId = f.firestoreProjectId?.stringValue;
+    if (!projectId) return null;
+    const { FirestoreAdapter } = await import('../public/lib/storage/FirestoreAdapter.js');
+    return new FirestoreAdapter({ projectId });
+  }
+
+  return null;
+}
 function viewerPage({ domainName, targetUrl, visits, ownerName }) {
   const displayTarget = targetUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
   return `<!DOCTYPE html>
