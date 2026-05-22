@@ -102,18 +102,31 @@ chrome.notifications?.onClicked.addListener(id => {
 // ── PORTAL ↔ EXTENSION messaging ──
 // Portal asks "are you installed? what version?" — extension answers
 chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
-  // Only trusted origins (defined in manifest.externally_connectable.matches)
   if (msg?.action === 'ping') {
     sendResponse({
       installed: true,
       version: chrome.runtime.getManifest().version,
       name: chrome.runtime.getManifest().name
     });
+
+  } else if (msg?.action === 'openViewer') {
+    // Portal asked us to open a domain in the viewer
+    const { domain, targetUrl, owner } = msg;
+    if (domain && targetUrl) {
+      const viewerUrl = chrome.runtime.getURL(
+        `viewer.html?domain=${encodeURIComponent(domain)}&url=${encodeURIComponent(targetUrl)}&user=${encodeURIComponent(owner || 'unknown')}`
+      );
+      chrome.tabs.create({ url: viewerUrl });
+      sendResponse({ ok: true });
+    } else {
+      sendResponse({ ok: false, error: 'Missing domain or targetUrl' });
+    }
+
   } else if (msg?.action === 'forceCheck') {
     checkVersion();
     sendResponse({ ok: true });
   }
-  return true; // keep channel open for async
+  return true;
 });
 
 // ── Omnibox ──

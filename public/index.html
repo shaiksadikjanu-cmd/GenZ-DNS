@@ -423,13 +423,13 @@ margin-bottom:-1px;">Workspace</button>
           </div>
           <div class="target-url" style="margin-bottom:10px;">↳ ${d.targetUrl}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <a href="${viewerUrl}" target="_blank" style="
+            <button onclick="openInExtension('${d.name}','${d.targetUrl}','${ownerSlug}')" style="
               display:inline-flex;align-items:center;gap:5px;
               padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;
               background:var(--badge-bg);color:var(--badge-text);
-              border:1px solid var(--border);text-decoration:none;
-              transition:0.15s;
-            " title="Open in JanuNet Extension">🧩 Open in Extension</a>
+              border:1px solid var(--border);cursor:pointer;
+              transition:0.15s;font-family:var(--font-sans);
+            " title="Open in JanuNet Extension">🧩 Open in Extension</button>
             <a href="${d.targetUrl}" target="_blank" rel="noopener" style="
               display:inline-flex;align-items:center;gap:5px;
               padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;
@@ -452,20 +452,42 @@ margin-bottom:-1px;">Workspace</button>
     });
   }
 
+  // Open domain in JanuNet extension via messaging
+  const JANUNET_EXT_ID = 'bhiglamcpgagajgdgikacilofimmpipm';
+  window.openInExtension = function(domain, targetUrl, owner) {
+    if (!chrome?.runtime?.sendMessage) {
+      showToast('Chrome extension API not available. Are you using Chrome?');
+      return;
+    }
+    chrome.runtime.sendMessage(
+      JANUNET_EXT_ID,
+      { action: 'openViewer', domain, targetUrl, owner },
+      response => {
+        if (chrome.runtime.lastError || !response) {
+          // Extension not installed or not responding — show install hint
+          showToast('JanuNet extension not found. Download it below ↓');
+        }
+      }
+    );
+  };
+
+  function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.innerText = msg;
+    toast.style.cssText = `
+      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+      background:#1a1a1a;color:#ededed;padding:10px 20px;
+      border-radius:8px;font-size:13px;z-index:9999;
+      border:1px solid #333;box-shadow:0 8px 24px rgba(0,0,0,0.4);
+      white-space:nowrap;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+  }
+
   // Copy share link to clipboard with toast feedback
   window.copyShareLink = function(url) {
-    navigator.clipboard.writeText(url).then(() => {
-      const toast = document.createElement('div');
-      toast.innerText = '🔗 Share link copied!';
-      toast.style.cssText = `
-        position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-        background:#1a1a1a;color:#ededed;padding:10px 20px;
-        border-radius:8px;font-size:13px;z-index:9999;
-        border:1px solid #333;box-shadow:0 8px 24px rgba(0,0,0,0.4);
-      `;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 2500);
-    });
+    navigator.clipboard.writeText(url).then(() => showToast('🔗 Share link copied!'));
   };
 
   // ══════════════════════════════════════════════════════
