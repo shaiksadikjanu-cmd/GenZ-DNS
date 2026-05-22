@@ -1,19 +1,11 @@
 // api/workspace.js — save and load encrypted workspace config
-//
-// WHY SERVER-SIDE:
-// We need to verify the user's Firebase token before allowing them to
-// save/load config. We do this by calling Firebase's token verification API.
-// This can only be done safely on the server — never trust the browser to
-// verify its own tokens.
-//
-// ROUTES:
-//   POST /api/workspace  { token, encryptedConfig }  → save config
-//   GET  /api/workspace?token=xxx                    → load config
+// SECURITY: We verify the Firebase token first, then use it to
+// authenticate our Firestore write. This satisfies the Firestore
+// rule: allow write: if request.auth != null
 
 const PROJECT_ID = 'janunet-cloud';
 const FIRESTORE  = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
-// Verify Firebase ID token and return UID
 async function verifyToken(token) {
   const res = await fetch(
     `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.FIREBASE_API_KEY}`,
@@ -26,13 +18,12 @@ async function verifyToken(token) {
   if (!res.ok) throw new Error('Token verification failed');
   const data = await res.json();
   if (!data.users?.length) throw new Error('User not found');
-  return data.users[0].localId; // this is the Firebase UID
+  return data.users[0].localId;
 }
 
 export default async function handler(req, res) {
   try {
     if (req.method === 'POST') {
-      // Save encrypted config
       const { token, encryptedConfig } = req.body;
       if (!token || !encryptedConfig) {
         return res.status(400).json({ error: 'Missing token or encryptedConfig' });
@@ -40,49 +31,56 @@ export default async function handler(req, res) {
 
       const uid = await verifyToken(token);
 
-      // Store encrypted config in Firestore under the user's document
-    // First try to update existing document
-const url  = `${FIRESTORE}/janu_users/${uid}?updateMask.fieldPaths=workspaceConfig`;
-const body = JSON.stringify({
-  fields: {
-    workspaceConfig: { stringValue: encryptedConfig }
-  }
-});
+      // Use the user's own Firebase token to write — satisfies Firestore auth rules
+      const authHeaders = {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${token}`
+      };
 
-let fsRes = await fetch(url, {
-  method:  'PATCH',
-  headers: { 'Content-Type': 'application/json' },
-  body
-});
+      // Try PATCH first (update existing doc)
+      let fsRes = await fetch(
+        `${FIRESTORE}/janu_users/${uid}?updateMask.fieldPaths=workspaceConfig`,
+        {
+          method:  'PATCH',
+          headers: authHeaders,
+          body:    JSON.stringify({
+            fields: { workspaceConfig: { stringValue: encryptedConfig } }
+          })
+        }
+      );
 
-// If document doesn't exist (404), create it
-if (fsRes.status === 404) {
-  fsRes = await fetch(`${FIRESTORE}/janu_users?documentId=${uid}`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({
-      fields: {
-        workspaceConfig: { stringValue: encryptedConfig }
+      // If doc doesn't exist, create it
+      if (fsRes.status === 404 || fsRes.status === 400) {
+        fsRes = await fetch(
+          `${FIRESTORE}/janu_users?documentId=${uid}`,
+          {
+            method:  'POST',
+            headers: authHeaders,
+            body:    JSON.stringify({
+              fields: { workspaceConfig: { stringValue: encryptedConfig } }
+            })
+          }
+        );
       }
-    })
-  });
-}
 
-if (!fsRes.ok) {
-  const errText = await fsRes.text();
-  console.error('Firestore error:', fsRes.status, errText);
-  throw new Error('Failed to save config: ' + fsRes.status);
-}
+      if (!fsRes.ok) {
+        const errText = await fsRes.text();
+        console.error('Firestore write error:', fsRes.status, errText);
+        return res.status(500).json({ error: 'Failed to save config: ' + fsRes.status });
+      }
+
+      return res.status(200).json({ ok: true });
 
     } else if (req.method === 'GET') {
-      // Load encrypted config
       const token = req.query.token;
       if (!token) return res.status(400).json({ error: 'Missing token' });
 
       const uid   = await verifyToken(token);
-      const fsRes = await fetch(`${FIRESTORE}/janu_users/${uid}`);
+      const fsRes = await fetch(`${FIRESTORE}/janu_users/${uid}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
 
-      if (!fsRes.ok) return res.status(404).json({ error: 'User not found' });
+      if (!fsRes.ok) return res.status(200).json({ encryptedConfig: null });
       const doc = await fsRes.json();
       const cfg = doc.fields?.workspaceConfig?.stringValue || null;
 
