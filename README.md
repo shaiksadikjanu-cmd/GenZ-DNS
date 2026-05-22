@@ -47,7 +47,7 @@ BASH
 
 1. **Clone or download this repo:**
 ```bash
-git clone https://github.com/YOUR_USERNAME/GenZ-DNS.git
+git clone https://github.com/shaiksadikjanu-cmd/GenZ-DNS.git
 ```
 
 2. **Open Chrome and go to:**
