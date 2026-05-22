@@ -117,6 +117,18 @@
       </div>
     </div>
 
+        <div id="dash-tabs" style="display:flex;gap:0;margin-bottom:24px;
+border-bottom:1px solid var(--border);">
+      <button id="tab-domains" data-tab="domains" style="padding:10px 20px;
+background:none;border:none;border-bottom:2px solid var(--primary);
+color:var(--primary);font-weight:600;font-size:14px;cursor:pointer;
+margin-bottom:-1px;">My Domains</button>
+      <button id="tab-workspace" data-tab="workspace" style="padding:10px 20px;
+background:none;border:none;border-bottom:2px solid transparent;
+color:var(--text-dim);font-weight:600;font-size:14px;cursor:pointer;
+margin-bottom:-1px;">Workspace</button>
+    </div>
+    <div id="panel-domains">
     <div class="card" style="border-top:4px solid var(--primary);">
       <h3 style="margin-top:0;">Deploy New Route</h3>
       <p style="font-size:13px;color:var(--text-dim);margin-bottom:15px;">Register a JanuNet domain and link it to any URL. Every domain is AI-scanned before going live.</p>
@@ -134,6 +146,50 @@
 
     <h3 style="margin-top:40px;margin-bottom:15px;">Your Active Routes</h3>
     <div id="domain-list"></div>
+    </div>
+    <div id="panel-workspace" style="display:none;">
+      <div class="card" style="border-top:4px solid var(--primary);">
+        <h3 style="margin-top:0;">Workspace Storage</h3>
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:20px;">
+          Choose where your domain data is stored.
+        </p>
+        <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+          <label style="flex:1;min-width:180px;padding:16px;border:2px solid var(--primary);border-radius:10px;cursor:pointer;background:var(--badge-bg);">
+            <input type="radio" name="ws-backend" value="janunet" checked onchange="onBackendChange(this.value)" style="margin-right:8px;">
+            <b>JanuNet Default</b>
+            <p style="font-size:12px;color:var(--text-dim);margin:6px 0 0;">Stored in JanuNet cloud. Zero setup. Recommended.</p>
+          </label>
+          <label style="flex:1;min-width:180px;padding:16px;border:1px solid var(--border);border-radius:10px;cursor:pointer;">
+            <input type="radio" name="ws-backend" value="supabase" onchange="onBackendChange(this.value)" style="margin-right:8px;">
+            <b>Supabase (Your own)</b>
+            <p style="font-size:12px;color:var(--text-dim);margin:6px 0 0;">Full data ownership. Your Supabase project.</p>
+          </label>
+          <label style="flex:1;min-width:180px;padding:16px;border:1px solid var(--border);border-radius:10px;cursor:pointer;">
+            <input type="radio" name="ws-backend" value="firestore-custom" onchange="onBackendChange(this.value)" style="margin-right:8px;">
+            <b>Firebase (Your own)</b>
+            <p style="font-size:12px;color:var(--text-dim);margin:6px 0 0;">Your own Firebase project.</p>
+          </label>
+        </div>
+        <div id="ws-supabase-form" style="display:none;margin-bottom:20px;">
+          <div class="form-group"><label>Supabase Project URL</label>
+            <input type="text" id="ws-supa-url" placeholder="https://xxxx.supabase.co"></div>
+          <div class="form-group"><label>Supabase Anon Key</label>
+            <input type="text" id="ws-supa-key" placeholder="sb_publishable_..."></div>
+        </div>
+        <div id="ws-firestore-form" style="display:none;margin-bottom:20px;">
+          <div class="form-group"><label>Firebase Project ID</label>
+            <input type="text" id="ws-fs-project" placeholder="your-firebase-project-id"></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button id="ws-test-btn" onclick="testWorkspaceConnection()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--text-main);padding:10px 18px;">Test Connection</button>
+          <button id="ws-save-btn" onclick="saveWorkspace()" style="padding:10px 20px;">Save Workspace</button>
+          <span id="ws-status" style="font-size:13px;color:var(--text-dim);"></span>
+        </div>
+        <div style="margin-top:20px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-dim);line-height:1.6;">
+          Your credentials are encrypted client-side before storage. JanuNet never sees your keys in plaintext. AES-256-GCM encryption.
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -344,6 +400,195 @@
       container.appendChild(card);
     });
   }
+
+  // ══════════════════════════════════════════════════════
+  // WORKSPACE — tab switching + backend config + save/load
+  // ══════════════════════════════════════════════════════
+
+  // Tab switcher
+  window.switchTab = function(tab) {
+    document.getElementById("panel-domains").style.display   = tab === "domains"   ? "" : "none";
+    document.getElementById("panel-workspace").style.display = tab === "workspace" ? "" : "none";
+    document.getElementById("tab-domains").style.borderBottomColor   = tab === "domains"   ? "var(--primary)" : "transparent";
+    document.getElementById("tab-workspace").style.borderBottomColor = tab === "workspace" ? "var(--primary)" : "transparent";
+    document.getElementById("tab-domains").style.color   = tab === "domains"   ? "var(--primary)" : "var(--text-dim)";
+    document.getElementById("tab-workspace").style.color = tab === "workspace" ? "var(--primary)" : "var(--text-dim)";
+    if (tab === "workspace") loadWorkspace();
+  };
+
+  // Wire tab buttons (data-tab attribute driven)
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll("[data-tab]").forEach(btn => {
+      btn.addEventListener("click", () => switchTab(btn.getAttribute("data-tab")));
+    });
+  });
+
+  // Show/hide credential forms based on backend selection
+  window.onBackendChange = function(val) {
+    document.getElementById("ws-supabase-form").style.display  = val === "supabase"          ? "" : "none";
+    document.getElementById("ws-firestore-form").style.display = val === "firestore-custom"  ? "" : "none";
+    document.getElementById("ws-test-btn").style.display       = val !== "janunet"           ? "" : "none";
+  };
+
+  // Test the connection before saving
+  window.testWorkspaceConnection = async function() {
+    const backend = document.querySelector("input[name=ws-backend]:checked")?.value;
+    const status  = document.getElementById("ws-status");
+    status.style.color = "var(--text-dim)";
+    status.innerText   = "Testing connection...";
+
+    try {
+      let adapter;
+      const { getStorage, resetStorage } = await import("/lib/storage/index.js");
+      const { SupabaseAdapter }          = await import("/lib/storage/SupabaseAdapter.js");
+      const { FirestoreAdapter }         = await import("/lib/storage/FirestoreAdapter.js");
+
+      if (backend === "supabase") {
+        const url = document.getElementById("ws-supa-url").value.trim();
+        const key = document.getElementById("ws-supa-key").value.trim();
+        if (!url || !key) { status.innerText = "Fill in all fields."; return; }
+        adapter = new SupabaseAdapter({ url, anonKey: key });
+      } else if (backend === "firestore-custom") {
+        const pid = document.getElementById("ws-fs-project").value.trim();
+        if (!pid) { status.innerText = "Fill in the project ID."; return; }
+        adapter = new FirestoreAdapter({ projectId: pid });
+      }
+
+      // Try listing domains — if it works, connection is good
+      const all = await adapter.listAllDomains();
+      status.style.color = "green";
+      status.innerText   = "Connection successful! (" + all.length + " domains found)";
+    } catch(e) {
+      status.style.color = "var(--danger)";
+      status.innerText   = "Connection failed: " + e.message;
+    }
+  };
+
+  // Save workspace config (encrypt then store via API)
+  window.saveWorkspace = async function() {
+    const user    = auth.currentUser;
+    const status  = document.getElementById("ws-status");
+    if (!user) { status.innerText = "Not logged in."; return; }
+
+    const backend = document.querySelector("input[name=ws-backend]:checked")?.value;
+    status.style.color = "var(--text-dim)";
+    status.innerText   = "Saving...";
+
+    let config = { backend };
+
+    if (backend === "supabase") {
+      config.url     = document.getElementById("ws-supa-url").value.trim();
+      config.anonKey = document.getElementById("ws-supa-key").value.trim();
+      if (!config.url || !config.anonKey) {
+        status.style.color = "var(--danger)";
+        status.innerText   = "Fill in all Supabase fields.";
+        return;
+      }
+    } else if (backend === "firestore-custom") {
+      config.projectId = document.getElementById("ws-fs-project").value.trim();
+      if (!config.projectId) {
+        status.style.color = "var(--danger)";
+        status.innerText   = "Fill in the Firebase Project ID.";
+        return;
+      }
+    }
+
+    try {
+      const { encryptConfig } = await import("/lib/crypto.js");
+      const token             = await user.getIdToken();
+      const encrypted         = await encryptConfig(user.uid, config);
+
+      const res = await fetch("/api/workspace", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ token, encryptedConfig: encrypted })
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      status.style.color = "green";
+      status.innerText   = "Workspace saved successfully.";
+
+      // Reload domains using new backend
+      await applyWorkspaceToStorage(user);
+      loadUserDomains(user);
+    } catch(e) {
+      status.style.color = "var(--danger)";
+      status.innerText   = "Failed to save: " + e.message;
+    }
+  };
+
+  // Load workspace config from API and populate form
+  async function loadWorkspace() {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const res   = await fetch("/api/workspace?token=" + encodeURIComponent(token));
+      if (!res.ok) return;
+      const data  = await res.json();
+      if (!data.encryptedConfig) return;
+
+      const { decryptConfig } = await import("/lib/crypto.js");
+      const config = await decryptConfig(user.uid, data.encryptedConfig);
+
+      // Populate the form with saved values
+      const radio = document.querySelector("input[name=ws-backend][value=" + config.backend + "]");
+      if (radio) { radio.checked = true; onBackendChange(config.backend); }
+
+      if (config.backend === "supabase") {
+        document.getElementById("ws-supa-url").value = config.url     || "";
+        document.getElementById("ws-supa-key").value = config.anonKey || "";
+      } else if (config.backend === "firestore-custom") {
+        document.getElementById("ws-fs-project").value = config.projectId || "";
+      }
+    } catch(e) {
+      console.warn("loadWorkspace failed:", e.message);
+    }
+  }
+
+  // Apply workspace config to the storage adapter (called on login + after save)
+  async function applyWorkspaceToStorage(user) {
+    try {
+      const token = await user.getIdToken();
+      const res   = await fetch("/api/workspace?token=" + encodeURIComponent(token));
+      if (!res.ok) return;
+      const data  = await res.json();
+      if (!data.encryptedConfig) return;
+
+      const { decryptConfig }            = await import("/lib/crypto.js");
+      const { resetStorage, getStorage } = await import("/lib/storage/index.js");
+      const config = await decryptConfig(user.uid, data.encryptedConfig);
+
+      resetStorage();
+
+      if (config.backend === "supabase") {
+        const { SupabaseAdapter } = await import("/lib/storage/SupabaseAdapter.js");
+        window._storage = new SupabaseAdapter({
+          url:          config.url,
+          anonKey:      config.anonKey,
+          getAuthToken: async () => user.getIdToken()
+        });
+      } else if (config.backend === "firestore-custom") {
+        const { FirestoreAdapter } = await import("/lib/storage/FirestoreAdapter.js");
+        window._storage = new FirestoreAdapter({
+          projectId:    config.projectId,
+          getAuthToken: async () => user.getIdToken()
+        });
+      }
+      // janunet default: storage already set correctly at boot
+    } catch(e) {
+      console.warn("applyWorkspaceToStorage failed:", e.message);
+    }
+  }
+
+  // On login: apply workspace before loading domains
+  // Patch showDashboard to call applyWorkspaceToStorage first
+  const _origShowDashboard = window.showDashboard;
+  async function showDashboardWithWorkspace(user) {
+    await applyWorkspaceToStorage(user);
+    showDashboard(user);
+  }
+
 </script>
 
   <!-- ============ EXTENSION DOWNLOAD SECTION ============ -->
