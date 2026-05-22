@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JanuNet Workspace</title>
+<style>
+  :root {
+    --bg:#0a0a0a; --surface:#121212; --surface2:#1a1a1a;
+    --border:#262626; --border-strong:#3a3a3a;
+    --text:#ededed; --text2:#9a9a9a; --text3:#5e5e5e;
+    --accent:#00ffcc; --accent-dim:rgba(0,255,204,0.08);
+    --danger:#ff5b5b;
+    --font-mono:"JetBrains Mono",ui-monospace,monospace;
+    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:var(--font-sans);
+    min-height:100vh;padding:24px 20px;
+  }
+
+  .topbar{
+    display:flex;align-items:center;gap:12px;
+    margin-bottom:28px;padding-bottom:16px;
+    border-bottom:1px solid var(--border);
+  }
+  .back-btn{
+    background:var(--surface2);border:1px solid var(--border);
+    color:var(--text2);padding:6px 12px;border-radius:6px;
+    cursor:pointer;font-size:12px;font-family:var(--font-sans);
+    transition:border-color 120ms,color 120ms;
+  }
+  .back-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .page-title{
+    font-family:var(--font-mono);font-size:14px;
+    font-weight:700;color:var(--text);
+  }
+  .page-title b{color:var(--accent);}
+
+  .section{margin-bottom:20px;}
+  .section-label{
+    font-size:10px;color:var(--text3);letter-spacing:1px;
+    text-transform:uppercase;font-weight:600;margin-bottom:10px;
+  }
+
+  /* Backend options */
+  .backend-option{
+    display:flex;align-items:flex-start;gap:12px;
+    padding:14px;background:var(--surface);
+    border:1px solid var(--border);border-radius:8px;
+    margin-bottom:8px;cursor:pointer;
+    transition:border-color 120ms;
+  }
+  .backend-option:hover{border-color:var(--border-strong);}
+  .backend-option.active{
+    border-color:var(--accent);
+    background:var(--accent-dim);
+  }
+  .backend-option input[type=radio]{
+    margin-top:2px;flex-shrink:0;accent-color:var(--accent);
+  }
+  .option-text h4{
+    font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;
+  }
+  .option-text p{
+    font-size:11px;color:var(--text3);line-height:1.5;
+  }
+
+  /* Credential forms */
+  .cred-form{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:8px;padding:16px;margin-bottom:16px;
+    display:none;
+  }
+  .cred-form.show{display:block;}
+  .form-group{margin-bottom:12px;}
+  .form-group label{
+    display:block;font-size:10px;color:var(--text3);
+    letter-spacing:1px;text-transform:uppercase;
+    font-weight:600;margin-bottom:6px;
+  }
+  .form-group input{
+    width:100%;background:var(--surface2);
+    border:1px solid var(--border);color:var(--text);
+    padding:9px 12px;border-radius:6px;
+    font-family:var(--font-mono);font-size:12px;outline:none;
+    transition:border-color 150ms;
+  }
+  .form-group input:focus{border-color:var(--accent);}
+  .form-group input::placeholder{color:var(--text3);}
+
+  /* Buttons */
+  .btn-row{display:flex;gap:8px;margin-top:4px;}
+  .btn{
+    flex:1;padding:11px;background:var(--accent);color:#000;
+    border:none;border-radius:6px;font-weight:700;
+    font-size:13px;cursor:pointer;font-family:var(--font-sans);
+    transition:background 120ms;
+  }
+  .btn:hover{background:#4cffd9;}
+  .btn-outline{
+    background:transparent;color:var(--text2);
+    border:1px solid var(--border);
+  }
+  .btn-outline:hover{border-color:var(--border-strong);color:var(--text);}
+
+  /* Status */
+  .status{
+    margin-top:12px;font-size:12px;font-family:var(--font-mono);
+    color:var(--text3);min-height:18px;
+  }
+  .status.ok{color:var(--accent);}
+  .status.err{color:var(--danger);}
+
+  /* Security note */
+  .security-note{
+    margin-top:20px;padding:12px;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:8px;font-size:11px;color:var(--text3);
+    line-height:1.6;font-family:var(--font-mono);
+  }
+  .security-note b{color:var(--text2);}
+
+  /* Current backend badge */
+  .current-badge{
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--accent-dim);border:1px solid rgba(0,255,204,0.2);
+    color:var(--accent);font-family:var(--font-mono);
+    font-size:10px;letter-spacing:1px;text-transform:uppercase;
+    padding:4px 10px;border-radius:999px;margin-bottom:16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="back-btn" id="back-btn">← Back</button>
+  <div class="page-title">JANU<b>NET</b> Workspace</div>
+</div>
+
+<div class="current-badge">
+  Active: <span id="current-backend-label">JanuNet Default</span>
+</div>
+
+<div class="section">
+  <div class="section-label">Choose Storage Backend</div>
+
+  <label class="backend-option active" id="opt-janunet">
+    <input type="radio" name="backend" value="janunet" checked>
+    <div class="option-text">
+      <h4>JanuNet Default</h4>
+      <p>Domains stored in JanuNet's cloud. Works instantly for all public domains. No setup needed.</p>
+    </div>
+  </label>
+
+  <label class="backend-option" id="opt-supabase">
+    <input type="radio" name="backend" value="supabase">
+    <div class="option-text">
+      <h4>My Supabase</h4>
+      <p>Connect your own Supabase project. Your domains stay in your database — full ownership.</p>
+    </div>
+  </label>
+
+  <label class="backend-option" id="opt-firestore">
+    <input type="radio" name="backend" value="firestore-custom">
+    <div class="option-text">
+      <h4>My Firebase</h4>
+      <p>Connect your own Firebase project. Use the same credentials as your portal workspace.</p>
+    </div>
+  </label>
+</div>
+
+<!-- Supabase credentials -->
+<div class="cred-form" id="form-supabase">
+  <div class="form-group">
+    <label>Supabase Project URL</label>
+    <input type="text" id="supa-url" placeholder="https://xxxx.supabase.co">
+  </div>
+  <div class="form-group">
+    <label>Supabase Anon Key</label>
+    <input type="text" id="supa-key" placeholder="sb_publishable_...">
+  </div>
+</div>
+
+<!-- Firestore credentials -->
+<div class="cred-form" id="form-firestore">
+  <div class="form-group">
+    <label>Firebase Project ID</label>
+    <input type="text" id="fs-project" placeholder="your-firebase-project-id">
+  </div>
+</div>
+
+<div class="btn-row">
+  <button class="btn btn-outline" id="test-btn" style="display:none;">Test Connection</button>
+  <button class="btn" id="save-btn">Save Workspace</button>
+</div>
+
+<div class="status" id="status"></div>
+
+<div class="security-note">
+  <b>Privacy:</b> Your credentials are stored locally in your browser only
+  using <b>chrome.storage.local</b>. They never leave your device or touch
+  JanuNet's servers. The extension talks directly to your chosen backend.
+</div>
+
+<script src="workspace.js"></script>
+</body>
+</html>

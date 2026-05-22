@@ -1,8 +1,51 @@
 // panel.js — JanuNet sidepanel
 // Handles: search, autocomplete, recents, favorites, navigation
 
-const RESOLVE_API = "https://gen-z-dns.vercel.app/api/resolve";
-const PORTAL_API  = "https://gen-z-dns.vercel.app/api";
+const RESOLVE_API  = "https://gen-z-dns.vercel.app/api/resolve";
+const PORTAL_API   = "https://gen-z-dns.vercel.app/api";
+const FIRESTORE_BASE = "https://firestore.googleapis.com/v1/projects";
+
+// Active workspace config — loaded from chrome.storage.local on boot
+let workspaceConfig = { backend: 'janunet' };
+
+// Load workspace config and resolve a domain against the right backend
+async function resolveWithWorkspace(domain) {
+  const cfg = workspaceConfig;
+
+  if (cfg.backend === 'supabase' && cfg.url && cfg.anonKey) {
+    // Query user's Supabase directly
+    const safe = domain.toLowerCase();
+    const res  = await fetch(
+      cfg.url.replace(/\/$/, '') + '/rest/v1/janu_domains?name=eq.' + encodeURIComponent(safe) + '&select=*',
+      { headers: { 'apikey': cfg.anonKey, 'Authorization': 'Bearer ' + cfg.anonKey } }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    if (!rows.length) return null;
+    return { targetUrl: rows[0].target_url, ownerName: rows[0].owner_name || 'unknown', visits: rows[0].visits || 0 };
+
+  } else if (cfg.backend === 'firestore-custom' && cfg.projectId) {
+    // Query user's Firestore directly
+    const safe = domain.toLowerCase();
+    const res  = await fetch(
+      FIRESTORE_BASE + '/' + cfg.projectId + '/databases/(default)/documents/janu_domains/' + encodeURIComponent(safe)
+    );
+    if (!res.ok) return null;
+    const doc = await res.json();
+    const f   = doc.fields || {};
+    return {
+      targetUrl: f.targetUrl?.stringValue  || '',
+      ownerName: f.ownerName?.stringValue  || 'unknown',
+      visits:    parseInt(f.visits?.integerValue || '0', 10)
+    };
+
+  } else {
+    // JanuNet default — use resolve API
+    const res = await fetch(RESOLVE_API + '?domain=' + encodeURIComponent(domain));
+    if (!res.ok) return null;
+    return await res.json();
+  }
+}
 const MAX_RECENTS = 8;
 
 // ── State ──
@@ -20,10 +63,31 @@ const clearBtn     = document.getElementById('clear-recents');
 
 // ── Boot ──
 document.addEventListener('DOMContentLoaded', async () => {
+  // Load workspace config first
+  await new Promise(resolve => {
+    chrome.storage.local.get(['janunet_workspace'], data => {
+      workspaceConfig = data.janunet_workspace || { backend: 'janunet' };
+      resolve();
+    });
+  });
+
   await loadStorage();
   renderFavorites();
   renderRecents();
   fetchAllDomains(); // background fetch for autocomplete
+
+  // Wire workspace settings button
+  document.getElementById('workspace-btn')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('workspace.html') });
+  });
+
+  // Listen for workspace changes from workspace.js
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.action === 'workspaceChanged') {
+      workspaceConfig = msg.config;
+      fetchAllDomains(); // refresh autocomplete for new backend
+    }
+  });
 });
 
 // ── Storage helpers ──
@@ -68,14 +132,11 @@ async function navigate(domainOverride) {
 
   // Check Firestore
   try {
-    const res = await fetch(`${RESOLVE_API}?domain=${encodeURIComponent(query)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.targetUrl) {
-        addRecent(query, data.targetUrl);
-        openViewer(query, data.targetUrl, data.ownerName || 'unknown');
-        return;
-      }
+    const data = await resolveWithWorkspace(query);
+    if (data?.targetUrl) {
+      addRecent(query, data.targetUrl);
+      openViewer(query, data.targetUrl, data.ownerName || 'unknown');
+      return;
     }
   } catch(e) { /* fall through */ }
 
