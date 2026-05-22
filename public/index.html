@@ -448,6 +448,7 @@ margin-bottom:-1px;">Workspace</button>
         const key = document.getElementById("ws-supa-key").value.trim();
         if (!url || !key) { status.innerText = "Fill in all fields."; return; }
         adapter = new SupabaseAdapter({ url, anonKey: key });
+        // Note: no getAuthToken — Supabase uses its own anon key, not Firebase tokens
       } else if (backend === "firestore-custom") {
         const pid = document.getElementById("ws-fs-project").value.trim();
         if (!pid) { status.innerText = "Fill in the project ID."; return; }
@@ -563,9 +564,9 @@ margin-bottom:-1px;">Workspace</button>
         const { SupabaseAdapter } = await import("/lib/storage/SupabaseAdapter.js");
         // Reassign module-level storage to Supabase backend
         storage = new SupabaseAdapter({
-          url:          config.url,
-          anonKey:      config.anonKey,
-          getAuthToken: async () => user.getIdToken()
+          url:     config.url,
+          anonKey: config.anonKey
+          // No getAuthToken — Supabase uses its own anon key JWT, not Firebase tokens
         });
         console.log("storage switched to supabase:", config.url);
       } else if (config.backend === "firestore-custom") {
