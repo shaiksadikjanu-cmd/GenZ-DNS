@@ -8,3 +8,7 @@ node_modules/
 # Loose extension ZIPs (only public/GenZ-DNS-Extension.zip is tracked)
 /extension.zip
 *.zip
+
+# Loose extension ZIPs (only public/GenZ-DNS-Extension.zip is tracked)
+/extension.zip
+*.zip
