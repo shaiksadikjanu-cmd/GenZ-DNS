@@ -1,3 +1,9 @@
+// api/domain.js — public domain viewer page
+// Handles: /domains/:user/:domain  (rewritten via vercel.json to /api/domain)
+// Storage access goes through the adapter — backend-agnostic.
+
+import { getStorage } from '../lib/storage/index.js';
+
 export default async function handler(req, res) {
   const domainName = req.query.domain;
   const ownerUser  = req.query.user;
@@ -6,36 +12,29 @@ export default async function handler(req, res) {
     return res.status(400).send(errorPage('No domain specified.'));
   }
 
-  const PROJECT_ID = "janunet-cloud";
-  const fsUrl      = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/janu_domains/${encodeURIComponent(domainName)}`;
-
-  let targetUrl = null;
-  let visits    = 0;
-  let ownerName = ownerUser || 'unknown';
-
+  const storage = getStorage();
+  let domain;
   try {
-    const fsRes = await fetch(fsUrl);
-    if (!fsRes.ok) return res.status(404).send(errorPage(`Domain not found: ${domainName}`));
-    const data = await fsRes.json();
-    targetUrl  = data.fields?.targetUrl?.stringValue;
-    visits     = parseInt(data.fields?.visits?.integerValue || '0', 10);
-    ownerName  = data.fields?.ownerName?.stringValue || ownerUser || 'unknown';
-
-    // Increment visit count (fire and forget)
-    fetch(`${fsUrl}?updateMask.fieldPaths=visits`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields: { visits: { integerValue: String(visits + 1) } } })
-    }).catch(() => {});
-
-  } catch(e) {
+    domain = await storage.getDomain(domainName);
+  } catch (e) {
+    console.error('storage error:', e);
     return res.status(500).send(errorPage('Could not reach the JanuNet cloud.'));
   }
 
-  if (!targetUrl) return res.status(404).send(errorPage(`Domain not found: ${domainName}`));
+  if (!domain) {
+    return res.status(404).send(errorPage(`Domain not found: ${domainName}`));
+  }
+
+  // Increment visit count (fire-and-forget — we don't block the page on it)
+  storage.incrementVisits(domainName).catch(() => {});
 
   res.setHeader('Content-Type', 'text/html');
-  res.status(200).send(viewerPage({ domainName, targetUrl, visits, ownerName }));
+  res.status(200).send(viewerPage({
+    domainName: domain.name,
+    targetUrl:  domain.targetUrl,
+    visits:     domain.visits + 1, // optimistic: show the visit we just incremented
+    ownerName:  domain.ownerName || ownerUser || 'unknown'
+  }));
 }
 
 function viewerPage({ domainName, targetUrl, visits, ownerName }) {
@@ -57,14 +56,10 @@ function viewerPage({ domainName, targetUrl, visits, ownerName }) {
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-sans);overflow:hidden;}
-
-  /* topbar — same feel as extension viewer */
   .topbar{
-    height:44px;background:var(--surface);
-    border-bottom:1px solid var(--border);
-    display:grid;grid-template-columns:auto 1fr auto;
-    align-items:center;gap:8px;padding:0 10px;
-    user-select:none;
+    height:44px;background:var(--surface);border-bottom:1px solid var(--border);
+    display:grid;grid-template-columns:auto 1fr auto;align-items:center;
+    gap:8px;padding:0 10px;user-select:none;
   }
   .nav-group{display:flex;gap:2px;}
   .nav-btn{
@@ -75,17 +70,13 @@ function viewerPage({ domainName, targetUrl, visits, ownerName }) {
   }
   .nav-btn:hover{background:var(--surface2);color:var(--text);}
   .nav-btn svg{width:16px;height:16px;stroke-width:2;}
-
-  /* address pill */
   .urlbar{
-    height:30px;background:var(--surface2);
-    border:1px solid var(--border);border-radius:999px;
-    display:flex;align-items:center;padding:0 14px 0 12px;
-    gap:8px;min-width:0;transition:border-color 150ms;
+    height:30px;background:var(--surface2);border:1px solid var(--border);
+    border-radius:999px;display:flex;align-items:center;
+    padding:0 14px 0 12px;gap:8px;min-width:0;transition:border-color 150ms;
   }
   .urlbar:hover{border-color:var(--border-strong);}
   .lock{width:14px;height:14px;flex-shrink:0;color:var(--accent);}
-  .lock svg{width:14px;height:14px;}
   .url-text{
     flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;
     font-family:var(--font-mono);font-size:13px;overflow:hidden;
@@ -96,16 +87,13 @@ function viewerPage({ domainName, targetUrl, visits, ownerName }) {
     color:var(--text2);font-size:11px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;
   }
-
-  /* right group */
   .right-group{display:flex;align-items:center;gap:8px;padding-right:4px;flex-shrink:0;}
   .visits{font-family:var(--font-mono);font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px;}
   .visits b{color:var(--text2);}
   .open-btn{
-    height:28px;padding:0 12px;
-    background:var(--accent-dim);border:1px solid transparent;
-    color:var(--accent);border-radius:6px;cursor:pointer;
-    font-size:12px;font-weight:600;
+    height:28px;padding:0 12px;background:var(--accent-dim);
+    border:1px solid transparent;color:var(--accent);border-radius:6px;
+    cursor:pointer;font-size:12px;font-weight:600;
     display:inline-flex;align-items:center;gap:6px;
     transition:background 120ms,border-color 120ms;
     text-decoration:none;white-space:nowrap;
@@ -113,38 +101,31 @@ function viewerPage({ domainName, targetUrl, visits, ownerName }) {
   .open-btn:hover{background:rgba(0,255,204,0.14);border-color:rgba(0,255,204,0.3);}
   .brand{font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;}
   .brand b{color:var(--accent);}
-
-  /* loading bar */
   .frame-wrap{height:calc(100% - 44px);position:relative;background:#fff;}
   iframe{width:100%;height:100%;border:none;background:#fff;}
   .loading-bar{
-    position:absolute;top:0;left:0;height:2px;
-    background:var(--accent);width:0%;
-    box-shadow:0 0 6px var(--accent);z-index:5;
+    position:absolute;top:0;left:0;height:2px;background:var(--accent);
+    width:0%;box-shadow:0 0 6px var(--accent);z-index:5;
     transition:width 300ms;
   }
   .loading-bar.active{width:80%;transition:width 4s cubic-bezier(0.1,0.7,0.3,0.99);}
   .loading-bar.done{width:100%;opacity:0;transition:width 200ms,opacity 400ms 200ms;}
-
-  /* blocked overlay */
   .blocked{
-    position:absolute;inset:0;background:var(--bg);
-    display:none;flex-direction:column;align-items:center;
-    justify-content:center;gap:16px;padding:40px;text-align:center;
+    position:absolute;inset:0;background:var(--bg);display:none;
+    flex-direction:column;align-items:center;justify-content:center;
+    gap:16px;padding:40px;text-align:center;
   }
   .blocked.show{display:flex;}
   .blocked h2{font-size:16px;font-weight:600;color:var(--text);}
   .blocked p{font-size:13px;color:var(--text2);max-width:360px;line-height:1.6;}
   .blocked a{
-    display:inline-block;padding:12px 24px;
-    background:var(--accent);color:#000;border-radius:8px;
-    font-weight:700;font-size:13px;text-decoration:none;
+    display:inline-block;padding:12px 24px;background:var(--accent);color:#000;
+    border-radius:8px;font-weight:700;font-size:13px;text-decoration:none;
   }
   .blocked small{font-size:11px;color:var(--text3);font-family:var(--font-mono);}
 </style>
 </head>
 <body>
-
 <div class="topbar">
   <div class="nav-group">
     <button class="nav-btn" id="back-btn" title="Back">
@@ -157,7 +138,6 @@ function viewerPage({ domainName, targetUrl, visits, ownerName }) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
     </button>
   </div>
-
   <div class="urlbar">
     <span class="lock">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -171,9 +151,8 @@ function viewerPage({ domainName, targetUrl, visits, ownerName }) {
       <span class="url-target">${displayTarget}</span>
     </div>
   </div>
-
   <div class="right-group">
-    <span class="visits"><b id="vc">${(visits + 1).toLocaleString()}</b>&nbsp;views</span>
+    <span class="visits"><b>${visits.toLocaleString()}</b>&nbsp;views</span>
     <a class="open-btn" href="${targetUrl}" target="_blank" rel="noopener" title="Open in new tab">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="13" height="13">
         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
@@ -185,7 +164,6 @@ function viewerPage({ domainName, targetUrl, visits, ownerName }) {
     <span class="brand">JANU<b>NET</b></span>
   </div>
 </div>
-
 <div class="frame-wrap">
   <div class="loading-bar" id="lb"></div>
   <iframe id="frame" src="${targetUrl}" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-navigation"></iframe>
@@ -196,13 +174,10 @@ function viewerPage({ domainName, targetUrl, visits, ownerName }) {
     <small>janunet · ${domainName}</small>
   </div>
 </div>
-
 <script>
   const frame = document.getElementById('frame');
   const lb    = document.getElementById('lb');
   const blocked = document.getElementById('blocked');
-
-  // Loading bar
   lb.classList.add('active');
   let didLoad = false;
   frame.addEventListener('load', () => {
@@ -211,13 +186,7 @@ function viewerPage({ domainName, targetUrl, visits, ownerName }) {
     lb.classList.add('done');
     setTimeout(() => { lb.style.width = '0'; lb.classList.remove('done'); }, 700);
   });
-
-  // If iframe fails to load in 6s show blocked overlay
-  setTimeout(() => {
-    if (!didLoad) blocked.classList.add('show');
-  }, 6000);
-
-  // Nav buttons
+  setTimeout(() => { if (!didLoad) blocked.classList.add('show'); }, 6000);
   document.getElementById('back-btn').addEventListener('click', () => {
     try { frame.contentWindow.history.back(); } catch(e) {}
   });
