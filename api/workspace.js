@@ -79,6 +79,11 @@ export default async function handler(req, res) {
         if (publicConfig.url)       pubFields.publicSupabaseUrl          = { stringValue: publicConfig.url };
         if (publicConfig.anonKey)   pubFields.publicSupabaseAnonKey      = { stringValue: publicConfig.anonKey };
         if (publicConfig.projectId) pubFields.publicFirestoreProjectId   = { stringValue: publicConfig.projectId };
+        // Extract project ref from URL: https://REF.supabase.co → REF
+        if (publicConfig.url) {
+          const supaRef = publicConfig.url.replace('https://', '').split('.')[0];
+          pubFields.publicSupabaseRef = { stringValue: supaRef };
+        }
 
         const mask = Object.keys(pubFields)
           .map(k => `updateMask.fieldPaths=${k}`)

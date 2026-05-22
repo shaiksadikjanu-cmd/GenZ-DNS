@@ -1,21 +1,9 @@
 {
   "version": 2,
   "rewrites": [
-    {
-      "source": "/domains/:user/:domain",
-      "destination": "/api/domain?user=:user&domain=:domain&backend=janunet"
-    },
-    {
-      "source": "/d/firebase-:projectId/:domain",
-      "destination": "/api/domain?projectId=:projectId&domain=:domain&backend=firebase"
-    },
-    {
-      "source": "/d/:uid/:domain",
-      "destination": "/api/domain?uid=:uid&domain=:domain&backend=supabase"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    }
+    { "source": "/u/:username/:domain", "destination": "/api/domain?backend=janunet&username=:username&domain=:domain" },
+    { "source": "/s/:ref/:domain",      "destination": "/api/domain?backend=supabase&ref=:ref&domain=:domain" },
+    { "source": "/f/:projectId/:domain","destination": "/api/domain?backend=firebase&projectId=:projectId&domain=:domain" },
+    { "source": "/api/(.*)",            "destination": "/api/$1" }
   ]
 }
