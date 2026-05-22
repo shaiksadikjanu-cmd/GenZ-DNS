@@ -343,5 +343,88 @@
     });
   }
 </script>
+
+  <!-- ============ EXTENSION DOWNLOAD SECTION ============ -->
+  <section id="download-section" style="max-width:760px;margin:20px auto 80px;padding:0 20px;">
+    <div style="
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:48px 40px;
+      text-align:center;
+      box-shadow:0 4px 20px rgba(0,0,0,0.05);
+    ">
+      <div style="font-size:52px;margin-bottom:14px;line-height:1;">🧩</div>
+      <h2 style="margin:0 0 12px;font-size:26px;font-weight:800;letter-spacing:-0.5px;">
+        Get the Chrome Extension
+      </h2>
+      <p style="
+        color:var(--text-dim);margin:0 auto 32px;
+        font-size:15px;max-width:500px;line-height:1.6;
+      ">
+        Install the JanuNet extension to access your custom domains directly in Chrome.
+        Works on Chrome, Brave, Edge, and any Chromium browser.
+      </p>
+
+      <a href="/GenZ-DNS-Extension.zip"
+         download="GenZ-DNS-Extension.zip"
+         style="
+           display:inline-flex;align-items:center;gap:10px;
+           background:var(--primary);color:#fff;
+           padding:16px 32px;border-radius:10px;
+           font-weight:700;font-size:15px;text-decoration:none;
+           transition:all 0.2s;margin-bottom:8px;
+           box-shadow:0 4px 14px rgba(26,115,232,0.25);
+         "
+         onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(26,115,232,0.35)'"
+         onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 14px rgba(26,115,232,0.25)'">
+        ⬇  Download Extension
+      </a>
+      <div style="font-family:'Courier New',monospace;font-size:11px;color:var(--text-dim);margin-bottom:36px;">
+        v2.0  ·  ~18 KB  ·  ZIP file
+      </div>
+
+      <!-- Install steps -->
+      <div style="
+        display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+        gap:14px;text-align:left;
+      ">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:18px;">
+          <div style="font-size:20px;margin-bottom:8px;">1</div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:6px;">Download & Extract</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.5;">
+            Download the ZIP and extract it anywhere on your computer.
+          </div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:18px;">
+          <div style="font-size:20px;margin-bottom:8px;">2</div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:6px;">Open Extensions</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.5;">
+            Go to <code style="background:var(--border);padding:2px 6px;border-radius:4px;font-size:11px;">chrome://extensions</code>
+          </div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:18px;">
+          <div style="font-size:20px;margin-bottom:8px;">3</div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:6px;">Enable Dev Mode</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.5;">
+            Toggle <b>Developer Mode</b> on (top right corner).
+          </div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:18px;">
+          <div style="font-size:20px;margin-bottom:8px;">4</div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:6px;">Load Unpacked</div>
+          <div style="font-size:12px;color:var(--text-dim);line-height:1.5;">
+            Click <b>Load unpacked</b> → select the <code style="background:var(--border);padding:2px 6px;border-radius:4px;font-size:11px;">extension</code> folder.
+          </div>
+        </div>
+      </div>
+
+      <p style="margin-top:32px;font-size:12px;color:var(--text-dim);">
+        Issues installing? Open an issue on
+        <a href="https://github.com/shaikjanu/GenZ-DNS" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:600;">GitHub →</a>
+      </p>
+    </div>
+  </section>
+
 </body>
 </html>
