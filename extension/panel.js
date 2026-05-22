@@ -1,8 +1,8 @@
 // panel.js — JanuNet sidepanel
 // Handles: search, autocomplete, recents, favorites, navigation
 
-const PROJECT_ID  = "janunet-cloud";
-const FIRESTORE   = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+const RESOLVE_API = "https://gen-z-dns.vercel.app/api/resolve";
+const PORTAL_API  = "https://gen-z-dns.vercel.app/api";
 const MAX_RECENTS = 8;
 
 // ── State ──
@@ -43,21 +43,16 @@ function saveStorage() {
 // ── Fetch all domains from Firestore (for autocomplete) ──
 async function fetchAllDomains() {
   try {
-    const res  = await fetch(`${FIRESTORE}/janu_domains`);
+    const res  = await fetch(`${PORTAL_API}/domains`);
+    if (!res.ok) return;
     const data = await res.json();
-    if (data.documents) {
-      allDomains = data.documents.map(d => ({
-        name:      d.name.split('/').pop(),
-        targetUrl: d.fields?.targetUrl?.stringValue || '',
-        owner:     d.fields?.ownerName?.stringValue || '',
-        visits:    parseInt(d.fields?.visits?.integerValue || '0', 10)
-      }));
+    if (Array.isArray(data)) {
+      allDomains = data;
     }
   } catch(e) {
     console.error('autocomplete fetch failed', e);
   }
 }
-
 // ── Search / Navigation ──
 goBtn.addEventListener('click', navigate);
 searchInput.addEventListener('keydown', e => {
@@ -73,14 +68,12 @@ async function navigate(domainOverride) {
 
   // Check Firestore
   try {
-    const res = await fetch(`${FIRESTORE}/janu_domains/${encodeURIComponent(query)}`);
+    const res = await fetch(`${RESOLVE_API}?domain=${encodeURIComponent(query)}`);
     if (res.ok) {
-      const data      = await res.json();
-      const targetUrl = data.fields?.targetUrl?.stringValue;
-      const owner     = data.fields?.ownerName?.stringValue || 'unknown';
-      if (targetUrl) {
-        addRecent(query, targetUrl);
-        openViewer(query, targetUrl, owner);
+      const data = await res.json();
+      if (data.targetUrl) {
+        addRecent(query, data.targetUrl);
+        openViewer(query, data.targetUrl, data.ownerName || 'unknown');
         return;
       }
     }

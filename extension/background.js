@@ -1,8 +1,9 @@
 // background.js — JanuNet service worker v2.0
 // Handles: sidepanel, onboarding, omnibox, version check, portal messaging
 
-const PROJECT_ID    = "janunet-cloud";
-const FIRESTORE     = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+const RESOLVE_API = "https://gen-z-dns.vercel.app/api/resolve";
+const PORTAL_BASE = "https://gen-z-dns.vercel.app";
+const FIRESTORE   = `https://firestore.googleapis.com/v1/projects/janunet-cloud/databases/(default)/documents`;
 const PORTAL_BASE   = "https://gen-z-dns.vercel.app";
 const VERSION_URL   = `${PORTAL_BASE}/version.json`;
 const CHECK_HOURS   = 6; // check for updates every 6 hours
@@ -121,11 +122,11 @@ chrome.omnibox.onInputEntered.addListener(async (text) => {
   const query = text.trim().toLowerCase();
   if (!query) return;
   try {
-    const res = await fetch(`${FIRESTORE}/janu_domains/${encodeURIComponent(query)}`);
+    const res = await fetch(`${RESOLVE_API}?domain=${encodeURIComponent(query)}`);
     if (res.ok) {
       const data      = await res.json();
-      const targetUrl = data.fields?.targetUrl?.stringValue;
-      const owner     = data.fields?.ownerName?.stringValue || 'unknown';
+      const targetUrl = data.targetUrl;
+      const owner     = data.ownerName || 'unknown';
       if (targetUrl) {
         const viewerUrl = chrome.runtime.getURL(
           `viewer.html?domain=${encodeURIComponent(query)}&url=${encodeURIComponent(targetUrl)}&user=${encodeURIComponent(owner)}`

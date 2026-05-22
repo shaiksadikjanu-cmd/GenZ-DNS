@@ -137,24 +137,15 @@ function showToast(msg) {
 }
 
 async function incrementVisits(domain) {
-  // Firestore REST API: read → write back with +1
-  // Note: not atomic. For Phase 3 we'll move to a Vercel function with FieldValue.increment()
-  const safe = domain.toLowerCase();
-  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/janu_domains/${safe}`;
+  // Visit counter is now handled server-side by api/domain.js
+  // when users access via the public URL. For extension visits,
+  // we call the resolve API which returns current count.
   try {
-    const res = await fetch(url);
+    const res = await fetch(`https://gen-z-dns.vercel.app/api/resolve?domain=${encodeURIComponent(domain)}`);
     if (!res.ok) return null;
     const data = await res.json();
-    const current = parseInt(data.fields?.visits?.integerValue || '0', 10);
-    const next = current + 1;
-    // Patch back with new count — updateMask preserves other fields
-    await fetch(`${url}?updateMask.fieldPaths=visits`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields: { visits: { integerValue: String(next) } } })
-    });
-    return next;
-  } catch (e) {
+    return data.visits || null;
+  } catch(e) {
     console.error('visit counter failed', e);
     return null;
   }
