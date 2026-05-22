@@ -77,15 +77,7 @@ async function getUserSupabase(uid) {
   return new SupabaseAdapter({ url, anonKey });
 }
 
-  if (backend === 'firestore-custom') {
-    const projectId = f.publicFirestoreProjectId?.stringValue;
-    if (!projectId) return null;
-    const { FirestoreAdapter } = await import('../public/lib/storage/FirestoreAdapter.js');
-    return new FirestoreAdapter({ projectId });
-  }
 
-  return null;
-}
 function viewerPage({ domainName, targetUrl, visits, ownerName }) {
   const displayTarget = targetUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
   return `<!DOCTYPE html>
