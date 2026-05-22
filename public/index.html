@@ -212,7 +212,7 @@ margin-bottom:-1px;">Workspace</button>
   const app     = initializeApp(firebaseConfig);
   const auth    = getAuth(app);
   // Adapter is auth-aware: portal supplies a token-getter so writes work.
-  const storage = getStorage({
+  let storage = getStorage({
     getAuthToken: async () => auth.currentUser ? await auth.currentUser.getIdToken() : null
   });
 
@@ -546,7 +546,8 @@ margin-bottom:-1px;">Workspace</button>
     }
   }
 
-  // Apply workspace config to the storage adapter (called on login + after save)
+  // Apply workspace config to the module-level storage variable
+  // IMPORTANT: storage must be 'let' not 'const' for this to work
   async function applyWorkspaceToStorage(user) {
     try {
       const token = await user.getIdToken();
@@ -555,27 +556,34 @@ margin-bottom:-1px;">Workspace</button>
       const data  = await res.json();
       if (!data.encryptedConfig) return;
 
-      const { decryptConfig }            = await import("/lib/crypto.js");
-      const { resetStorage, getStorage } = await import("/lib/storage/index.js");
+      const { decryptConfig } = await import("/lib/crypto.js");
       const config = await decryptConfig(user.uid, data.encryptedConfig);
-
-      resetStorage();
 
       if (config.backend === "supabase") {
         const { SupabaseAdapter } = await import("/lib/storage/SupabaseAdapter.js");
-        window._storage = new SupabaseAdapter({
+        // Reassign module-level storage to Supabase backend
+        storage = new SupabaseAdapter({
           url:          config.url,
           anonKey:      config.anonKey,
           getAuthToken: async () => user.getIdToken()
         });
+        console.log("storage switched to supabase:", config.url);
       } else if (config.backend === "firestore-custom") {
         const { FirestoreAdapter } = await import("/lib/storage/FirestoreAdapter.js");
-        window._storage = new FirestoreAdapter({
+        storage = new FirestoreAdapter({
           projectId:    config.projectId,
           getAuthToken: async () => user.getIdToken()
         });
+        console.log("storage switched to firestore-custom:", config.projectId);
+      } else {
+        // janunet default — reset to original adapter
+        const { getStorage, resetStorage } = await import("/lib/storage/index.js");
+        resetStorage();
+        storage = getStorage({
+          getAuthToken: async () => auth.currentUser ? await auth.currentUser.getIdToken() : null
+        });
+        console.log("storage switched to janunet default");
       }
-      // janunet default: storage already set correctly at boot
     } catch(e) {
       console.warn("applyWorkspaceToStorage failed:", e.message);
     }
