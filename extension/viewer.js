@@ -4,8 +4,9 @@
 const PROJECT_ID = "janunet-cloud";
 const PUBLIC_BASE     = "https://gen-z-dns.vercel.app/domains";
 const PUBLIC_BASE_UID = "https://gen-z-dns.vercel.app/d";
+const HARDCODED_UID = "zalbAt6CM2gR4pfvT8W2ICHxjAj1";
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
   const customDomain = params.get('domain');
   const targetUrl = params.get('url');
@@ -78,8 +79,16 @@ const ownerUid  = params.get('uid')  || null;
   const modal = document.getElementById('share-modal');
   const extUrl = `janunet://${customDomain}`;
   // Use UID-based URL for BYOS domains, name-based for JanuNet default
-const publicUrl = ownerUid
-  ? `${PUBLIC_BASE_UID}/${ownerUid}/${encodeURIComponent(customDomain)}`
+// Read workspace from chrome.storage to get the right UID
+const wsData = await new Promise(resolve => {
+  chrome.storage.local.get(['janunet_workspace'], d => resolve(d.janunet_workspace || {}));
+});
+
+// Priority: viewer URL param > workspace stored uid > hardcoded fallback (your account)
+const effectiveUid = ownerUid || wsData.ownerUid || (wsData.backend && wsData.backend !== 'janunet' ? HARDCODED_UID : null);
+
+const publicUrl = effectiveUid
+  ? `${PUBLIC_BASE_UID}/${effectiveUid}/${encodeURIComponent(customDomain)}`
   : `${PUBLIC_BASE}/${encodeURIComponent(ownerUser)}/${encodeURIComponent(customDomain)}`;
   document.getElementById('ext-url').innerText = extUrl;
   document.getElementById('public-url').innerText = publicUrl;
