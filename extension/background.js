@@ -16,7 +16,6 @@ chrome.runtime.onInstalled.addListener(details => {
   if (details.reason === 'install') {
     chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
   }
-  // Set up periodic version check
   chrome.alarms.create('version-check', { periodInMinutes: CHECK_HOURS * 60 });
   checkVersion();
 });
@@ -30,28 +29,26 @@ chrome.alarms?.onAlarm.addListener(alarm => {
   if (alarm.name === 'version-check') checkVersion();
 });
 
-// ── Version check core ──
+// ── Version check ──
 async function checkVersion() {
   try {
-    const res  = await fetch(VERSION_URL + '?t=' + Date.now()); // cache-bust
+    const res  = await fetch(VERSION_URL + '?t=' + Date.now());
     if (!res.ok) return;
     const data = await res.json();
     const installed = chrome.runtime.getManifest().version;
     const latest    = data.latest;
 
-    // Save latest to storage so panel can read it
     chrome.storage.local.set({
       janu_versionInfo: {
         installed,
         latest,
-        downloadUrl: data.downloadUrl,
+        downloadUrl:  data.downloadUrl,
         releaseNotes: data.releaseNotes,
-        checkedAt: Date.now()
+        checkedAt:    Date.now()
       }
     });
 
     if (isOutdated(installed, latest)) {
-      // Check if we've already notified about THIS version
       chrome.storage.local.get(['janu_notifiedVersion'], stored => {
         if (stored.janu_notifiedVersion !== latest) {
           showUpdateNotification(installed, latest);
@@ -65,7 +62,6 @@ async function checkVersion() {
 }
 
 function isOutdated(installed, latest) {
-  // Simple semantic compare: split by '.' and compare ints
   const a = installed.split('.').map(Number);
   const b = latest.split('.').map(Number);
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
@@ -78,17 +74,16 @@ function isOutdated(installed, latest) {
 
 function showUpdateNotification(current, latest) {
   chrome.notifications.create('janunet-update', {
-    type: 'basic',
-    iconUrl: chrome.runtime.getURL('icons/icon-128.png'), // placeholder until you add a 128x128 icon
-    title: '🔄 JanuNet update available',
-    message: `Version ${latest} is out (you have ${current}). Click to update.`,
+    type:     'basic',
+    iconUrl:  chrome.runtime.getURL('icons/icon-128.png'),
+    title:    'JanuNet update available',
+    message:  `Version ${latest} is out (you have ${current}). Click to update.`,
     priority: 2
   }, () => {
     if (chrome.runtime.lastError) console.warn('notif:', chrome.runtime.lastError.message);
   });
 }
 
-// User clicks the notification → open update page
 chrome.notifications?.onClicked.addListener(id => {
   if (id === 'janunet-update') {
     chrome.storage.local.get(['janu_versionInfo'], data => {
@@ -99,14 +94,15 @@ chrome.notifications?.onClicked.addListener(id => {
   }
 });
 
-// ── PORTAL ↔ EXTENSION messaging ──
-// Portal asks "are you installed? what version?" — extension answers
+// ── Portal ↔ Extension messaging ──
 chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
+
   if (msg?.action === 'ping') {
+    // Portal checking if extension is installed
     sendResponse({
       installed: true,
-      version: chrome.runtime.getManifest().version,
-      name: chrome.runtime.getManifest().name
+      version:   chrome.runtime.getManifest().version,
+      name:      chrome.runtime.getManifest().name
     });
 
   } else if (msg?.action === 'openViewer') {
@@ -122,11 +118,26 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: false, error: 'Missing domain or targetUrl' });
     }
 
+  } else if (msg?.action === 'workspaceUpdated') {
+    // Portal saved workspace — store ownerUid so viewer can build correct share URLs
+    // WHY: BYOS share URLs need /d/{uid}/{domain} format
+    // The uid comes from Firebase Auth on the portal side
+    const { backend, ownerUid } = msg;
+    chrome.storage.local.get(['janunet_workspace'], data => {
+      const current    = data.janunet_workspace || {};
+      current.ownerUid = ownerUid;
+      chrome.storage.local.set({ janunet_workspace: current }, () => {
+        console.log('workspace ownerUid stored:', ownerUid, 'backend:', backend);
+      });
+    });
+    sendResponse({ ok: true });
+
   } else if (msg?.action === 'forceCheck') {
     checkVersion();
     sendResponse({ ok: true });
   }
-  return true;
+
+  return true; // keep channel open for async sendResponse
 });
 
 // ── Omnibox ──
@@ -139,9 +150,11 @@ chrome.omnibox.onInputEntered.addListener(async (text) => {
       const data      = await res.json();
       const targetUrl = data.targetUrl;
       const owner     = data.ownerName || 'unknown';
+      const uid       = data.ownerUid  || null;
       if (targetUrl) {
+        const uidParam  = uid ? `&uid=${encodeURIComponent(uid)}` : '';
         const viewerUrl = chrome.runtime.getURL(
-          `viewer.html?domain=${encodeURIComponent(query)}&url=${encodeURIComponent(targetUrl)}&user=${encodeURIComponent(owner)}`
+          `viewer.html?domain=${encodeURIComponent(query)}&url=${encodeURIComponent(targetUrl)}&user=${encodeURIComponent(owner)}${uidParam}`
         );
         chrome.tabs.update({ url: viewerUrl });
         return;

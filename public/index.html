@@ -604,7 +604,8 @@ margin-bottom:-1px;">Workspace</button>
             backend:   config.backend,
             url:       config.url       || null,
             anonKey:   config.anonKey   || null,
-            projectId: config.projectId || null
+            projectId: config.projectId || null,
+            ownerUid:  auth.currentUser?.uid || null
           }
         })
       });
@@ -616,6 +617,16 @@ margin-bottom:-1px;">Workspace</button>
       // Reload domains using new backend
       await applyWorkspaceToStorage(user);
       loadUserDomains(user);
+
+      // Notify extension with ownerUid so QR/share URLs work correctly
+      const JANUNET_EXT_ID = 'bhiglamcpgagajgdgikacilofimmpipm';
+      if (chrome?.runtime?.sendMessage && config.backend !== 'janunet') {
+        chrome.runtime.sendMessage(JANUNET_EXT_ID, {
+          action:    'workspaceUpdated',
+          backend:   config.backend,
+          ownerUid:  user.uid
+        }, () => { /* ignore errors if extension not installed */ });
+      }
     } catch(e) {
       status.style.color = "var(--danger)";
       status.innerText   = "Failed to save: " + e.message;

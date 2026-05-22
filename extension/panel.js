@@ -136,7 +136,9 @@ async function navigate(domainOverride) {
     const data = await resolveWithWorkspace(query);
     if (data?.targetUrl) {
       addRecent(query, data.targetUrl);
-      openViewer(query, data.targetUrl, data.ownerName || 'unknown', data.ownerUid || null);
+      // Use ownerUid from resolved data, fall back to stored workspace uid
+      const resolvedUid = data.ownerUid || workspaceConfig.ownerUid || null;
+      openViewer(query, data.targetUrl, data.ownerName || 'unknown', resolvedUid);
       return;
     }
   } catch(e) { /* fall through */ }
