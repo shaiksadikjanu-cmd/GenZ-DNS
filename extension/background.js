@@ -4,9 +4,8 @@
 const RESOLVE_API = "https://gen-z-dns.vercel.app/api/resolve";
 const PORTAL_BASE = "https://gen-z-dns.vercel.app";
 const FIRESTORE   = `https://firestore.googleapis.com/v1/projects/janunet-cloud/databases/(default)/documents`;
-const PORTAL_BASE   = "https://gen-z-dns.vercel.app";
-const VERSION_URL   = `${PORTAL_BASE}/version.json`;
-const CHECK_HOURS   = 6; // check for updates every 6 hours
+const VERSION_URL = `${PORTAL_BASE}/version.json`;
+const CHECK_HOURS = 6;
 
 // ── Sidepanel opens on icon click ──
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
