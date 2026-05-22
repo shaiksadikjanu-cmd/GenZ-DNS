@@ -41,21 +41,38 @@ export default async function handler(req, res) {
       const uid = await verifyToken(token);
 
       // Store encrypted config in Firestore under the user's document
-      const url  = `${FIRESTORE}/janu_users/${uid}?updateMask.fieldPaths=workspaceConfig`;
-      const body = JSON.stringify({
-        fields: {
-          workspaceConfig: { stringValue: encryptedConfig }
-        }
-      });
+    // First try to update existing document
+const url  = `${FIRESTORE}/janu_users/${uid}?updateMask.fieldPaths=workspaceConfig`;
+const body = JSON.stringify({
+  fields: {
+    workspaceConfig: { stringValue: encryptedConfig }
+  }
+});
 
-      const fsRes = await fetch(url, {
-        method:  'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body
-      });
+let fsRes = await fetch(url, {
+  method:  'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body
+});
 
-      if (!fsRes.ok) throw new Error('Failed to save config');
-      return res.status(200).json({ ok: true });
+// If document doesn't exist (404), create it
+if (fsRes.status === 404) {
+  fsRes = await fetch(`${FIRESTORE}/janu_users?documentId=${uid}`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      fields: {
+        workspaceConfig: { stringValue: encryptedConfig }
+      }
+    })
+  });
+}
+
+if (!fsRes.ok) {
+  const errText = await fsRes.text();
+  console.error('Firestore error:', fsRes.status, errText);
+  throw new Error('Failed to save config: ' + fsRes.status);
+}
 
     } else if (req.method === 'GET') {
       // Load encrypted config
