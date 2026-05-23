@@ -144,21 +144,65 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
 chrome.omnibox.onInputEntered.addListener(async (text) => {
   const query = text.trim().toLowerCase();
   if (!query) return;
+
+  // Read workspace config — omnibox must respect user's chosen backend
+  const wsData = await new Promise(resolve => {
+    chrome.storage.local.get(['janunet_workspace'], d => resolve(d.janunet_workspace || { backend: 'janunet' }));
+  });
+
   try {
-    const res = await fetch(`${RESOLVE_API}?domain=${encodeURIComponent(query)}`);
-    if (res.ok) {
-      const data      = await res.json();
-      const targetUrl = data.targetUrl;
-      const owner     = data.ownerName || 'unknown';
-      const uid       = data.ownerUid  || null;
-      if (targetUrl) {
-        const uidParam  = uid ? `&uid=${encodeURIComponent(uid)}` : '';
-        const viewerUrl = chrome.runtime.getURL(
-          `viewer.html?domain=${encodeURIComponent(query)}&url=${encodeURIComponent(targetUrl)}&user=${encodeURIComponent(owner)}${uidParam}`
-        );
-        chrome.tabs.update({ url: viewerUrl });
-        return;
+    let data = null;
+
+    if (wsData.backend === 'supabase' && wsData.url && wsData.anonKey) {
+      const res = await fetch(
+        wsData.url.replace(/\/$/, '') + '/rest/v1/janu_domains?name=eq.' + encodeURIComponent(query) + '&select=*',
+        { headers: { 'apikey': wsData.anonKey, 'Authorization': 'Bearer ' + wsData.anonKey } }
+      );
+      if (res.ok) {
+        const rows = await res.json();
+        if (rows.length) data = {
+          targetUrl:      rows[0].target_url      || '',
+          ownerName:      rows[0].owner_name      || 'unknown',
+          ownerUid:       rows[0].owner_uid       || null,
+          storageBackend: rows[0].storage_backend || 'supabase',
+          storageRef:     rows[0].storage_ref     || wsData.supabaseRef || null,
+          storageProject: rows[0].storage_project || null
+        };
       }
+
+    } else if (wsData.backend === 'firestore-custom' && wsData.projectId) {
+      const res = await fetch(
+        `https://firestore.googleapis.com/v1/projects/${wsData.projectId}/databases/(default)/documents/janu_domains/${encodeURIComponent(query)}`
+      );
+      if (res.ok) {
+        const doc = await res.json();
+        const f   = doc.fields || {};
+        if (f.targetUrl) data = {
+          targetUrl:      f.targetUrl?.stringValue      || '',
+          ownerName:      f.ownerName?.stringValue      || 'unknown',
+          ownerUid:       f.ownerUid?.stringValue       || null,
+          storageBackend: f.storageBackend?.stringValue || 'firestore-custom',
+          storageRef:     f.storageRef?.stringValue     || null,
+          storageProject: f.storageProject?.stringValue || wsData.projectId || null
+        };
+      }
+
+    } else {
+      // JanuNet default
+      const res = await fetch(`${RESOLVE_API}?domain=${encodeURIComponent(query)}`);
+      if (res.ok) data = await res.json();
+    }
+
+    if (data?.targetUrl) {
+      const backendParam = data.storageBackend ? `&storageBackend=${encodeURIComponent(data.storageBackend)}` : '';
+      const refParam     = data.storageRef     ? `&storageRef=${encodeURIComponent(data.storageRef)}`         : '';
+      const projectParam = data.storageProject ? `&storageProject=${encodeURIComponent(data.storageProject)}` : '';
+      const uidParam     = data.ownerUid       ? `&uid=${encodeURIComponent(data.ownerUid)}`                  : '';
+      const viewerUrl = chrome.runtime.getURL(
+        `viewer.html?domain=${encodeURIComponent(query)}&url=${encodeURIComponent(data.targetUrl)}&user=${encodeURIComponent(data.ownerName || 'unknown')}${uidParam}${backendParam}${refParam}${projectParam}`
+      );
+      chrome.tabs.update({ url: viewerUrl });
+      return;
     }
   } catch(e) {}
   chrome.tabs.update({ url: `${PORTAL_BASE}?q=${encodeURIComponent(query)}` });
