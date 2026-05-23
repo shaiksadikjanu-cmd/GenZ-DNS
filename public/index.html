@@ -409,12 +409,16 @@ margin-bottom:-1px;">Workspace</button>
       const card = document.createElement('div');
       card.className = 'domain-card';
 
-      // UID-based URL for BYOS backends — no username needed
-      const isByos      = backendKey !== 'firestore';
-      const userUid     = auth.currentUser?.uid || 'unknown';
-      const publicUrl   = isByos
-        ? `https://gen-z-dns.vercel.app/d/${userUid}/${encodeURIComponent(d.name)}`
-        : `https://gen-z-dns.vercel.app/domains/${ownerSlug}/${encodeURIComponent(d.name)}`;
+      // Architecture: /u/{username}/{domain} | /s/{ref}/{domain} | /f/{projectId}/{domain}
+      let publicUrl;
+      if (backendKey === 'supabase' && wsConfig.url) {
+        const supaRef = wsConfig.url.replace('https://', '').split('.')[0];
+        publicUrl = `https://gen-z-dns.vercel.app/s/${encodeURIComponent(supaRef)}/${encodeURIComponent(d.name)}`;
+      } else if (backendKey === 'firestore-custom' && wsConfig.projectId) {
+        publicUrl = `https://gen-z-dns.vercel.app/f/${encodeURIComponent(wsConfig.projectId)}/${encodeURIComponent(d.name)}`;
+      } else {
+        publicUrl = `https://gen-z-dns.vercel.app/u/${encodeURIComponent(ownerSlug)}/${encodeURIComponent(d.name)}`;
+      }
       const viewerUrl   = `chrome-extension://${EXT_ID}/viewer.html?domain=${encodeURIComponent(d.name)}&url=${encodeURIComponent(d.targetUrl)}&user=${ownerSlug}`;
 
       card.innerHTML = `

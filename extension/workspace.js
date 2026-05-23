@@ -130,6 +130,8 @@ function saveWorkspace() {
     }
     config.url     = url;
     config.anonKey = key;
+    // Extract Supabase project ref from URL — needed for /s/{ref}/{domain} share URLs
+    config.supabaseRef = url.replace('https://', '').split('.')[0];
 
   } else if (backend === 'firestore-custom') {
     const pid = document.getElementById('fs-project').value.trim();

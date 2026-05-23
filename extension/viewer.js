@@ -2,8 +2,7 @@
 // Handles: topbar display, nav (back/fwd/refresh), visit counter, share modal, QR generation
 
 const PROJECT_ID = "janunet-cloud";
-const PUBLIC_BASE     = "https://gen-z-dns.vercel.app/domains";
-const PUBLIC_BASE_UID = "https://gen-z-dns.vercel.app/d";
+const PORTAL_BASE = "https://gen-z-dns.vercel.app";
 
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -85,14 +84,14 @@ const wsData = await new Promise(resolve => {
 });
 
 // URL format depends on user's active workspace backend
+// Architecture: /u/{username}/{domain} | /s/{supabase-ref}/{domain} | /f/{project-id}/{domain}
 let publicUrl;
-if (wsData.backend === 'firestore-custom' && wsData.projectId) {
-  publicUrl = `${PUBLIC_BASE_UID}/firebase-${encodeURIComponent(wsData.projectId)}/${encodeURIComponent(customDomain)}`;
-} else if ((wsData.backend === 'supabase' || ownerUid) && (wsData.ownerUid || ownerUid)) {
-  const effectiveUid = ownerUid || wsData.ownerUid;
-  publicUrl = `${PUBLIC_BASE_UID}/${effectiveUid}/${encodeURIComponent(customDomain)}`;
+if (wsData.backend === 'supabase' && wsData.supabaseRef) {
+  publicUrl = `${PORTAL_BASE}/s/${encodeURIComponent(wsData.supabaseRef)}/${encodeURIComponent(customDomain)}`;
+} else if (wsData.backend === 'firestore-custom' && wsData.projectId) {
+  publicUrl = `${PORTAL_BASE}/f/${encodeURIComponent(wsData.projectId)}/${encodeURIComponent(customDomain)}`;
 } else {
-  publicUrl = `${PUBLIC_BASE}/${encodeURIComponent(ownerUser)}/${encodeURIComponent(customDomain)}`;
+  publicUrl = `${PORTAL_BASE}/u/${encodeURIComponent(ownerUser)}/${encodeURIComponent(customDomain)}`;
 }
   document.getElementById('ext-url').innerText = extUrl;
   document.getElementById('public-url').innerText = publicUrl;
