@@ -91,9 +91,11 @@ const wsData = await new Promise(resolve => {
 // Architecture: /u/{username}/{domain} | /s/{ref}/{domain} | /f/{projectId}/{domain}
 // Priority: domain's own storage fields > workspace config fallback
 let publicUrl;
-const effectiveBackend = storageBackend || wsData.backend || 'janunet';
-const effectiveRef     = storageRef     || wsData.supabaseRef || null;
-const effectiveProject = storageProject || wsData.projectId   || null;
+// Use domain's own storage fields — never fall back to workspace config
+// Workspace config is for QUERYING, not for URL generation
+const effectiveBackend = storageBackend || 'janunet';
+const effectiveRef     = storageRef     || null;
+const effectiveProject = storageProject || null;
 const effectiveSlug    = ownerSlug      || ownerUser;
 
 if (effectiveBackend === 'supabase' && effectiveRef) {
