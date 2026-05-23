@@ -350,13 +350,35 @@ margin-bottom:-1px;">Workspace</button>
         err.style.color = 'var(--danger)';
         return err.innerText = 'Domain is already taken globally!';
       }
+      // Get the current workspace config so we can tag the domain with its backend
+      let activeBackend = 'janunet';
+      let activeRef     = null;
+      let activeProject = null;
+      try {
+        const tok    = await user.getIdToken();
+        const wsRes  = await fetch("/api/workspace?token=" + encodeURIComponent(tok));
+        if (wsRes.ok) {
+          const wsData = await wsRes.json();
+          if (wsData.encryptedConfig) {
+            const { decryptConfig } = await import("/lib/crypto.js");
+            const wsConfig = await decryptConfig(user.uid, wsData.encryptedConfig);
+            activeBackend = wsConfig.backend || 'janunet';
+            if (wsConfig.url)       activeRef     = wsConfig.url.replace('https://', '').split('.')[0];
+            if (wsConfig.projectId) activeProject = wsConfig.projectId;
+          }
+        }
+      } catch(e) { /* fall back to janunet default */ }
+
       await storage.createDomain({
-        name:       domainName,
-        targetUrl:  url,
-        ownerEmail: user.email,
-        ownerName:  user.displayName || user.email,
-        ownerUid:   user.uid,
-        createdAt:  Date.now()
+        name:           domainName,
+        targetUrl:      url,
+        ownerEmail:     user.email,
+        ownerName:      user.displayName || user.email,
+        ownerUid:       user.uid,
+        storageBackend: activeBackend,
+        storageRef:     activeRef,
+        storageProject: activeProject,
+        createdAt:      Date.now()
       });
     } catch(e) {
       err.style.color = 'var(--danger)';
@@ -409,14 +431,15 @@ margin-bottom:-1px;">Workspace</button>
       const card = document.createElement('div');
       card.className = 'domain-card';
 
-      // Architecture: /u/{username}/{domain} | /s/{ref}/{domain} | /f/{projectId}/{domain}
+      // Each domain knows its own backend — read from domain doc itself
+      // No dependency on current workspace state
       let publicUrl;
-      if (backendKey === 'supabase' && wsConfig.url) {
-        const supaRef = wsConfig.url.replace('https://', '').split('.')[0];
-        publicUrl = `https://gen-z-dns.vercel.app/s/${encodeURIComponent(supaRef)}/${encodeURIComponent(d.name)}`;
-      } else if (backendKey === 'firestore-custom' && wsConfig.projectId) {
-        publicUrl = `https://gen-z-dns.vercel.app/f/${encodeURIComponent(wsConfig.projectId)}/${encodeURIComponent(d.name)}`;
+      if (d.storageBackend === 'supabase' && d.storageRef) {
+        publicUrl = `https://gen-z-dns.vercel.app/s/${encodeURIComponent(d.storageRef)}/${encodeURIComponent(d.name)}`;
+      } else if (d.storageBackend === 'firestore-custom' && d.storageProject) {
+        publicUrl = `https://gen-z-dns.vercel.app/f/${encodeURIComponent(d.storageProject)}/${encodeURIComponent(d.name)}`;
       } else {
+        // janunet default OR legacy domain without storage tags
         publicUrl = `https://gen-z-dns.vercel.app/u/${encodeURIComponent(ownerSlug)}/${encodeURIComponent(d.name)}`;
       }
       const viewerUrl   = `chrome-extension://${EXT_ID}/viewer.html?domain=${encodeURIComponent(d.name)}&url=${encodeURIComponent(d.targetUrl)}&user=${ownerSlug}`;

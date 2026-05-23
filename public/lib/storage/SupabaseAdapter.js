@@ -67,12 +67,15 @@ export class SupabaseAdapter extends StorageAdapter {
       headers: await this._headers({ 'Prefer': 'return=representation' }),
       body:    JSON.stringify({
         name,
-        target_url:  data.targetUrl,
-        owner_email: data.ownerEmail,
-        owner_name:  data.ownerName  || '',
-        owner_uid:   data.ownerUid   || '',
-        visits:      0,
-        created_at:  data.createdAt || Date.now()
+        target_url:      data.targetUrl,
+        owner_email:     data.ownerEmail,
+        owner_name:      data.ownerName      || '',
+        owner_uid:       data.ownerUid       || '',
+        storage_backend: data.storageBackend || 'supabase',
+        storage_ref:     data.storageRef     || '',
+        storage_project: data.storageProject || '',
+        visits:          0,
+        created_at:      data.createdAt || Date.now()
       })
     });
     if (!res.ok) throw new Error('createDomain failed: ' + await res.text());
@@ -125,13 +128,16 @@ export class SupabaseAdapter extends StorageAdapter {
 
   _unpack(row) {
     return {
-      name:       row.name,
-      targetUrl:  row.target_url   || '',
-      ownerEmail: row.owner_email  || '',
-      ownerName:  row.owner_name   || '',
-      ownerUid:   row.owner_uid    || null,
-      visits:     parseInt(row.visits || 0, 10),
-      createdAt:  row.created_at   ? parseInt(row.created_at, 10) : null
+      name:           row.name,
+      targetUrl:      row.target_url      || '',
+      ownerEmail:     row.owner_email     || '',
+      ownerName:      row.owner_name      || '',
+      ownerUid:       row.owner_uid       || null,
+      storageBackend: row.storage_backend || 'supabase',
+      storageRef:     row.storage_ref     || null,
+      storageProject: row.storage_project || null,
+      visits:         parseInt(row.visits || 0, 10),
+      createdAt:      row.created_at      ? parseInt(row.created_at, 10) : null
     };
   }
 }

@@ -91,12 +91,15 @@ export class FirestoreAdapter extends StorageAdapter {
 
     const body = {
       fields: {
-        targetUrl:  { stringValue:  data.targetUrl },
-        ownerEmail: { stringValue:  data.ownerEmail },
-        ownerName:  { stringValue:  data.ownerName || '' },
-        ownerUid:   { stringValue:  data.ownerUid  || '' },
-        visits:     { integerValue: '0' },
-        createdAt:  { integerValue: String(data.createdAt || Date.now()) }
+        targetUrl:      { stringValue:  data.targetUrl },
+        ownerEmail:     { stringValue:  data.ownerEmail },
+        ownerName:      { stringValue:  data.ownerName      || '' },
+        ownerUid:       { stringValue:  data.ownerUid       || '' },
+        storageBackend: { stringValue:  data.storageBackend || 'janunet' },
+        storageRef:     { stringValue:  data.storageRef     || '' },
+        storageProject: { stringValue:  data.storageProject || '' },
+        visits:         { integerValue: '0' },
+        createdAt:      { integerValue: String(data.createdAt || Date.now()) }
       }
     };
 
