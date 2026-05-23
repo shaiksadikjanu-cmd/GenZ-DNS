@@ -9,8 +9,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
   const customDomain = params.get('domain');
   const targetUrl = params.get('url');
-  const ownerUser = params.get('user') || 'unknown';
-const ownerUid  = params.get('uid')  || null;
+  const ownerUser     = params.get('user')           || 'unknown';
+  const ownerUid      = params.get('uid')            || null;
+  const storageBackend = params.get('storageBackend') || null;
+  const storageRef     = params.get('storageRef')     || null;
+  const storageProject = params.get('storageProject') || null;
+  const ownerSlug      = params.get('ownerSlug')      || ownerUser;
 
   const iframe   = document.getElementById('content-frame');
   const urlDom   = document.getElementById('url-domain');
@@ -84,14 +88,20 @@ const wsData = await new Promise(resolve => {
 });
 
 // URL format depends on user's active workspace backend
-// Architecture: /u/{username}/{domain} | /s/{supabase-ref}/{domain} | /f/{project-id}/{domain}
+// Architecture: /u/{username}/{domain} | /s/{ref}/{domain} | /f/{projectId}/{domain}
+// Priority: domain's own storage fields > workspace config fallback
 let publicUrl;
-if (wsData.backend === 'supabase' && wsData.supabaseRef) {
-  publicUrl = `${PORTAL_BASE}/s/${encodeURIComponent(wsData.supabaseRef)}/${encodeURIComponent(customDomain)}`;
-} else if (wsData.backend === 'firestore-custom' && wsData.projectId) {
-  publicUrl = `${PORTAL_BASE}/f/${encodeURIComponent(wsData.projectId)}/${encodeURIComponent(customDomain)}`;
+const effectiveBackend = storageBackend || wsData.backend || 'janunet';
+const effectiveRef     = storageRef     || wsData.supabaseRef || null;
+const effectiveProject = storageProject || wsData.projectId   || null;
+const effectiveSlug    = ownerSlug      || ownerUser;
+
+if (effectiveBackend === 'supabase' && effectiveRef) {
+  publicUrl = `${PORTAL_BASE}/s/${encodeURIComponent(effectiveRef)}/${encodeURIComponent(customDomain)}`;
+} else if (effectiveBackend === 'firestore-custom' && effectiveProject) {
+  publicUrl = `${PORTAL_BASE}/f/${encodeURIComponent(effectiveProject)}/${encodeURIComponent(customDomain)}`;
 } else {
-  publicUrl = `${PORTAL_BASE}/u/${encodeURIComponent(ownerUser)}/${encodeURIComponent(customDomain)}`;
+  publicUrl = `${PORTAL_BASE}/u/${encodeURIComponent(effectiveSlug)}/${encodeURIComponent(customDomain)}`;
 }
   document.getElementById('ext-url').innerText = extUrl;
   document.getElementById('public-url').innerText = publicUrl;

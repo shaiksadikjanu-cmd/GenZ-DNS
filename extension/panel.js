@@ -22,7 +22,15 @@ async function resolveWithWorkspace(domain) {
     if (!res.ok) return null;
     const rows = await res.json();
     if (!rows.length) return null;
-    return { targetUrl: rows[0].target_url, ownerName: rows[0].owner_name || 'unknown', visits: rows[0].visits || 0, ownerUid: rows[0].owner_uid || null };
+    return {
+      targetUrl:      rows[0].target_url      || '',
+      ownerName:      rows[0].owner_name      || 'unknown',
+      ownerUid:       rows[0].owner_uid       || null,
+      storageBackend: rows[0].storage_backend || 'supabase',
+      storageRef:     rows[0].storage_ref     || cfg.supabaseRef || null,
+      storageProject: rows[0].storage_project || null,
+      visits:         rows[0].visits          || 0
+    };
 
   } else if (cfg.backend === 'firestore-custom' && cfg.projectId) {
     // Query user's Firestore directly
@@ -34,17 +42,29 @@ async function resolveWithWorkspace(domain) {
     const doc = await res.json();
     const f   = doc.fields || {};
     return {
-  targetUrl: f.targetUrl?.stringValue  || '',
-  ownerName: f.ownerName?.stringValue  || 'unknown',
-  ownerUid:  f.ownerUid?.stringValue   || null,
-  visits:    parseInt(f.visits?.integerValue || '0', 10)
-};
+      targetUrl:      f.targetUrl?.stringValue      || '',
+      ownerName:      f.ownerName?.stringValue      || 'unknown',
+      ownerUid:       f.ownerUid?.stringValue       || null,
+      storageBackend: f.storageBackend?.stringValue || 'firestore-custom',
+      storageRef:     f.storageRef?.stringValue     || null,
+      storageProject: f.storageProject?.stringValue || cfg.projectId || null,
+      visits:         parseInt(f.visits?.integerValue || '0', 10)
+    };
 
   } else {
     // JanuNet default — use resolve API
     const res = await fetch(RESOLVE_API + '?domain=' + encodeURIComponent(domain));
     if (!res.ok) return null;
-    return await res.json();
+    const data = await res.json();
+    return {
+      targetUrl:      data.targetUrl      || '',
+      ownerName:      data.ownerName      || 'unknown',
+      ownerUid:       data.ownerUid       || null,
+      storageBackend: data.storageBackend || 'janunet',
+      storageRef:     data.storageRef     || null,
+      storageProject: data.storageProject || null,
+      visits:         data.visits         || 0
+    };
   }
 }
 const MAX_RECENTS = 8;
@@ -137,8 +157,12 @@ async function navigate(domainOverride) {
     if (data?.targetUrl) {
       addRecent(query, data.targetUrl);
       // Use ownerUid from resolved data, fall back to stored workspace uid
-      const resolvedUid = data.ownerUid || workspaceConfig.ownerUid || null;
-      openViewer(query, data.targetUrl, data.ownerName || 'unknown', resolvedUid);
+      openViewer(query, data.targetUrl, data.ownerName || 'unknown', data.ownerUid || null, {
+        storageBackend: data.storageBackend || 'janunet',
+        storageRef:     data.storageRef     || null,
+        storageProject: data.storageProject || null,
+        ownerSlug:      data.ownerName      || 'unknown'
+      });
       return;
     }
   } catch(e) { /* fall through */ }
@@ -146,10 +170,14 @@ async function navigate(domainOverride) {
   showToast(`⚠️ not found: ${query}`);
 }
 
-function openViewer(domain, url, owner, uid) {
-  const uidParam = uid ? `&uid=${encodeURIComponent(uid)}` : '';
+function openViewer(domain, url, owner, uid, storage = {}) {
+  const uidParam     = uid                        ? `&uid=${encodeURIComponent(uid)}` : '';
+  const backendParam = storage.storageBackend     ? `&storageBackend=${encodeURIComponent(storage.storageBackend)}` : '';
+  const refParam     = storage.storageRef         ? `&storageRef=${encodeURIComponent(storage.storageRef)}` : '';
+  const projectParam = storage.storageProject     ? `&storageProject=${encodeURIComponent(storage.storageProject)}` : '';
+  const slugParam    = storage.ownerSlug          ? `&ownerSlug=${encodeURIComponent(storage.ownerSlug)}` : '';
   const viewerUrl = chrome.runtime.getURL(
-    `viewer.html?domain=${encodeURIComponent(domain)}&url=${encodeURIComponent(url)}&user=${encodeURIComponent(owner)}${uidParam}`
+    `viewer.html?domain=${encodeURIComponent(domain)}&url=${encodeURIComponent(url)}&user=${encodeURIComponent(owner)}${uidParam}${backendParam}${refParam}${projectParam}${slugParam}`
   );
   chrome.tabs.create({ url: viewerUrl });
 }

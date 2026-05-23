@@ -26,12 +26,15 @@ export default async function handler(req, res) {
     if (!result) {
       return res.status(404).json({ error: 'Domain not found' });
     }
-    return res.status(200).json({
-      name:      result.name,
-      targetUrl: result.targetUrl,
-      ownerName: result.ownerName,
-      ownerUid:  result.ownerUid  || null,
-      visits:    result.visits
+   return res.status(200).json({
+      name:           result.name,
+      targetUrl:      result.targetUrl,
+      ownerName:      result.ownerName,
+      ownerUid:       result.ownerUid       || null,
+      storageBackend: result.storageBackend || 'janunet',
+      storageRef:     result.storageRef     || null,
+      storageProject: result.storageProject || null,
+      visits:         result.visits
     });
   } catch(e) {
     console.error('resolve error:', e);
